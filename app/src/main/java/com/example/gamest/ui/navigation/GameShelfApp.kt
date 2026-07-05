@@ -24,7 +24,9 @@ fun GameShelfApp(
 ) {
     var selectedRoute by rememberSaveable { mutableStateOf("search") }
 
-    val searchViewModel: SearchViewModel = viewModel()
+    val searchViewModel: SearchViewModel = viewModel(
+        factory = SearchViewModel.Factory
+    )
 
     val title = when (selectedRoute) {
         "search" -> "GameShelf"

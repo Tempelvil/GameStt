@@ -1,3 +1,11 @@
+import java.util.Properties
+
+val localProperties = Properties().apply {
+    load(rootProject.file("local.properties").inputStream())
+}
+
+val rawgApiKey = localProperties.getProperty("RAWG_API_KEY") ?: ""
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -23,7 +31,7 @@ android {
         buildConfigField(
             "String",
             "RAWG_API_KEY",
-            "\"${project.findProperty("RAWG_API_KEY") ?: ""}\""
+            "\"$rawgApiKey\""
 
         )
     }
@@ -71,4 +79,7 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     implementation("com.jakewharton.retrofit:retrofit2-kotlinx-serialization-converter:1.0.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    //Coil
+    implementation("io.coil-kt:coil-compose:2.7.0")
 }
