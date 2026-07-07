@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarOutline
@@ -45,6 +46,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.example.gamest.model.GameFilter
 import com.example.gamest.model.GameUiModel
 import com.example.gamest.ui.theme.GameStTheme
 
@@ -53,7 +55,8 @@ fun SearchScreen(
     uiState: SearchUiState,
     onSearchQueryChange: (String) -> Unit,
     onSaveGameClick: (Int) -> Unit,
-    onGenreClick: (String) -> Unit,
+    onGenreClick: (GameFilter) -> Unit,
+    onMoreGenreClick:()->Unit,
     modifier: Modifier = Modifier
 ) {
     LazyVerticalGrid(
@@ -78,14 +81,13 @@ fun SearchScreen(
         item(span = { GridItemSpan(maxLineSpan) }) {
             val sectionTitle = when {
                 uiState.searchQuery.isNotBlank() -> "Search Results"
-                uiState.selectedGenre.isNullOrBlank() -> "Top Rated"
-                else -> uiState.selectedGenre
+                else -> uiState.selectedFilter.title
             }
 
             val sectionDescription = when {
                 uiState.searchQuery.isNotBlank() -> "Games matching your search"
-                uiState.selectedGenre.isNullOrBlank() -> "The highest rated games by the community"
-                else -> "Popular ${uiState.selectedGenre} games"
+                uiState.selectedFilter == GameFilter.TopRated -> "The highest rated games by the community"
+                else -> "Popular ${uiState.selectedFilter.title} games"
             }
 
             Column {
@@ -106,8 +108,9 @@ fun SearchScreen(
 
         item(span = { GridItemSpan(maxLineSpan) }) {
             GenreChipsRow(
-                selectedGenre = uiState.selectedGenre,
-                onGenreClick = onGenreClick
+                selectedGenre = uiState.selectedFilter,
+                onGenreClick = onGenreClick,
+                onMoreGenreClick = onMoreGenreClick
             )
         }
         if (uiState.isLoading) {
@@ -191,7 +194,7 @@ fun GameCard(
                         Spacer(modifier = Modifier.width(4.dp))
 
                         Text(
-                            text = game.rating.toString(),
+                            text = game.metacritic?.toString() ?: "—",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -272,25 +275,29 @@ fun SearchTextField(
 }
 @Composable
 fun GenreChipsRow(
-    selectedGenre: String?,
-    onGenreClick: (String) -> Unit,
+    selectedGenre: GameFilter,
+    onMoreGenreClick: () -> Unit,
+    onGenreClick: (GameFilter) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val genres = listOf("Top Rated", "RPG", "Action", "PC", "Adventure")
-
     Row(
         modifier = modifier.horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        genres.forEach { genre ->
+        listOf(
+            GameFilter.TopRated,
+            GameFilter.Rpg,
+            GameFilter.Action,
+            GameFilter.Pc
+        ).forEach { filter ->
             FilterChip(
-                selected = selectedGenre == genre,
-                onClick = { onGenreClick(genre) },
-                label = { Text(genre) },
-                leadingIcon = if (selectedGenre == genre) {
+                selected = selectedGenre == filter,
+                onClick = { onGenreClick(filter) },
+                label = { Text(filter.title) },
+                leadingIcon = if (selectedGenre == filter) {
                     {
                         Icon(
-                            imageVector = Icons.Default.StarOutline,
+                            imageVector = Icons.Default.Star,
                             contentDescription = null,
                             modifier = Modifier.size(16.dp)
                         )
@@ -300,6 +307,16 @@ fun GenreChipsRow(
                 }
             )
         }
+
+        AssistChip(
+            onClick = onMoreGenreClick,
+            label = {
+                Icon(
+                    imageVector = Icons.Default.MoreHoriz,
+                    contentDescription = "More filters"
+                )
+            }
+        )
     }
 }
 
@@ -332,6 +349,7 @@ fun SearchScreenPreview() {
             onSaveGameClick = {},
             onGenreClick = {},
             modifier = Modifier,
+            onMoreGenreClick = {},
         )
     }
 }

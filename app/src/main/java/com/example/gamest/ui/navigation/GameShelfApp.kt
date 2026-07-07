@@ -61,9 +61,10 @@ fun GameShelfApp(
                     searchViewModel.onSaveGameClick(gameId)
                 },
                 modifier = Modifier.padding(innerPadding),
-                onGenreClick = {genre->
+                onGenreClick = { genre ->
                     searchViewModel.onGenreClick(genre)
-                }
+                },
+                onMoreGenreClick = {}
             )
 
             "collection" -> Text("Collection screen")

@@ -10,8 +10,9 @@ data class RawgGameDto(
     @SerialName("background_image")
     val backgroundImage: String? = null,
     val rating: Double = 0.0,
-    val genres: List<RawgGenreDto> = emptyList(),
-    val platforms: List<RawgPlatformWrapperDto> = emptyList()
+    val genres: List<RawgGenreDto>? = emptyList(),
+    val platforms: List<RawgPlatformWrapperDto>? = emptyList(),
+    val metacritic: Int? = null
 )
 @Serializable
 data class RawgGenreDto(

@@ -9,7 +9,8 @@ data class GameUiModel(
     val genres: List<String>,
     val platforms: List<String>,
     val isSaved: Boolean = false,
-    val status: GameStatus? = null
+    val status: GameStatus? = null,
+    val metacritic: Int? = null
 )
 
 enum class GameStatus {

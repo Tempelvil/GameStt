@@ -12,7 +12,10 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.gamest.GameStApplication
 import com.example.gamest.data.repository.GamesRepository
+import com.example.gamest.model.GameFilter
 import com.example.gamest.model.GameUiModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import okhttp3.Call
 
@@ -27,6 +30,8 @@ class SearchViewModel(
         loadGames()
     }
 
+    private var searchJob: Job?=null
+
     private fun loadGames() {
         viewModelScope.launch {
             uiState = uiState.copy(
@@ -35,7 +40,11 @@ class SearchViewModel(
             )
 
             try {
-                val games = repository.getTopRatedGames()
+                val games = repository.getGames(
+                    searchQuery = uiState.searchQuery,
+                    filter = uiState.selectedFilter,
+                    page =uiState.
+                )
 
                 uiState = uiState.copy(
                     games = games,
@@ -52,12 +61,21 @@ class SearchViewModel(
 
     fun onSearchQueryChange(query: String) {
         uiState = uiState.copy(searchQuery = query)
+
+        searchJob?.cancel()
+
+        searchJob = viewModelScope.launch {
+            delay(500)
+            loadGames()
+        }
     }
 
-    fun onGenreClick(genre: String) {
+    fun onGenreClick(filter: GameFilter) {
         uiState = uiState.copy(
-            selectedGenre = if (uiState.selectedGenre == genre) null else genre
+            selectedFilter = filter,
+            games = emptyList()
         )
+        loadGames()
     }
 
     fun onSaveGameClick(gameId: Int) {
@@ -85,41 +103,3 @@ class SearchViewModel(
     }
 
 }
-private val fakeGames = listOf(
-    GameUiModel(
-        id = 1,
-        title = "Elden Ring",
-        imageUrl = "",
-        rating = 9.4,
-        genres = listOf("RPG"),
-        platforms = listOf("PC"),
-        isSaved = false
-    ),
-    GameUiModel(
-        id = 2,
-        title = "Cyberpunk 2077",
-        imageUrl = "",
-        rating = 8.9,
-        genres = listOf("Action"),
-        platforms = listOf("PC"),
-        isSaved = true
-    ),
-    GameUiModel(
-        id = 3,
-        title = "The Witcher 3",
-        imageUrl = "",
-        rating = 9.5,
-        genres = listOf("RPG"),
-        platforms = listOf("PC"),
-        isSaved = false
-    ),
-    GameUiModel(
-        id = 4,
-        title = "Hades",
-        imageUrl = "",
-        rating = 9.1,
-        genres = listOf("Action"),
-        platforms = listOf("Switch"),
-        isSaved = false
-    )
-)
