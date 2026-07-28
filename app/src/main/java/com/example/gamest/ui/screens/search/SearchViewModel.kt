@@ -17,7 +17,6 @@ import com.example.gamest.model.GameUiModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import okhttp3.Call
 
 class SearchViewModel(
     private val repository: GamesRepository
@@ -36,6 +35,9 @@ class SearchViewModel(
         viewModelScope.launch {
             uiState = uiState.copy(
                 isLoading = true,
+                isLoadingMore = false,
+                page = 1,
+                canLoadMore = true,
                 errorMessage = null
             )
 
@@ -43,16 +45,53 @@ class SearchViewModel(
                 val games = repository.getGames(
                     searchQuery = uiState.searchQuery,
                     filter = uiState.selectedFilter,
-                    page =uiState.
+                    page = 1
                 )
 
                 uiState = uiState.copy(
                     games = games,
-                    isLoading = false
+                    isLoading = false,
+                    page = 1,
+                    canLoadMore = games.isNotEmpty()
                 )
             } catch (e: Exception) {
                 uiState = uiState.copy(
                     isLoading = false,
+                    errorMessage = e.message ?: "Unknown error"
+                )
+            }
+        }
+    }
+
+    fun loadNextPage() {
+        if (uiState.isLoading || uiState.isLoadingMore || !uiState.canLoadMore) {
+            return
+        }
+
+        viewModelScope.launch {
+            val nextPage = uiState.page + 1
+
+            uiState = uiState.copy(
+                isLoadingMore = true,
+                errorMessage = null
+            )
+
+            try {
+                val newGames = repository.getGames(
+                    searchQuery = uiState.searchQuery,
+                    filter = uiState.selectedFilter,
+                    page = nextPage
+                )
+
+                uiState = uiState.copy(
+                    games = uiState.games + newGames,
+                    isLoadingMore = false,
+                    page = nextPage,
+                    canLoadMore = newGames.isNotEmpty()
+                )
+            } catch (e: Exception) {
+                uiState = uiState.copy(
+                    isLoadingMore = false,
                     errorMessage = e.message ?: "Unknown error"
                 )
             }
@@ -66,6 +105,13 @@ class SearchViewModel(
 
         searchJob = viewModelScope.launch {
             delay(500)
+
+            uiState = uiState.copy(
+                games = emptyList(),
+                page = 1,
+                canLoadMore = true
+            )
+
             loadGames()
         }
     }
@@ -73,7 +119,9 @@ class SearchViewModel(
     fun onGenreClick(filter: GameFilter) {
         uiState = uiState.copy(
             selectedFilter = filter,
-            games = emptyList()
+            games = emptyList(),
+            page = 1,
+            canLoadMore = true
         )
         loadGames()
     }

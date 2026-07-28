@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -31,6 +32,7 @@ import androidx.compose.material.icons.filled.StarOutline
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -38,6 +40,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -57,10 +61,33 @@ fun SearchScreen(
     onSaveGameClick: (Int) -> Unit,
     onGenreClick: (GameFilter) -> Unit,
     onMoreGenreClick:()->Unit,
+    onLoadNextPage:()->Unit,
+    onGameClick:(Int)->Unit,
     modifier: Modifier = Modifier
 ) {
+    val gridState = rememberLazyGridState()
+
+    LaunchedEffect(gridState, uiState.games.size) {
+        snapshotFlow {
+            gridState.layoutInfo.visibleItemsInfo
+                .lastOrNull()
+                ?.index
+        }.collect { lastVisibleIndex ->
+            val totalItemsCount = gridState.layoutInfo.totalItemsCount
+
+            if (
+                lastVisibleIndex != null &&
+                totalItemsCount > 0 &&
+                lastVisibleIndex >= totalItemsCount - 4
+            ) {
+                onLoadNextPage()
+            }
+        }
+    }
+
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
+        state = gridState,
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(
             start = 20.dp,
@@ -130,8 +157,23 @@ fun SearchScreen(
         items(uiState.games) { game ->
             GameCard(
                 game = game,
+                onClick = {
+                    onGameClick(game.id)
+                },
                 onSaveClick = { onSaveGameClick(game.id) }
             )
+        }
+        if (uiState.isLoadingMore) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
         }
 
 
@@ -142,10 +184,12 @@ fun SearchScreen(
 @Composable
 fun GameCard(
     game: GameUiModel,
+    onClick: () -> Unit,
     onSaveClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
+        onClick = onClick,
         modifier = modifier,
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(
@@ -350,6 +394,8 @@ fun SearchScreenPreview() {
             onGenreClick = {},
             modifier = Modifier,
             onMoreGenreClick = {},
+            onLoadNextPage = {},
+            onGameClick = {}
         )
     }
 }

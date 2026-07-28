@@ -1,6 +1,7 @@
 package com.example.gamest.data.network
 
 import retrofit2.http.GET
+import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface RawgApiService {
@@ -15,4 +16,9 @@ interface RawgApiService {
         @Query("ordering") ordering: String? = "-rating"
     ): RawgGamesResponseDto
 
+    @GET("games/{id}")
+    suspend fun getGamesDetails(
+        @Path("id")gameId: Int,
+        @Query("key") apiKey:String
+    ): RawgGameDetailsDto
 }
