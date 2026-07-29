@@ -19,6 +19,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.gamest.ui.components.GameBottomBar
 import com.example.gamest.ui.components.GameTopBar
 import com.example.gamest.ui.screens.details.DetailsScreen
+import com.example.gamest.ui.screens.details.GameDetailsViewModel
 import com.example.gamest.ui.screens.search.SearchScreen
 import com.example.gamest.ui.screens.search.SearchViewModel
 
@@ -101,11 +102,15 @@ fun GameShelfApp(
 
             composable(GameDestination.DETAILS) {
                 backStackEntry->
-                val gameId = backStackEntry.arguments?.getString(GameDestination.DETAILS_ARGUMENT)
+                val gameId = backStackEntry.arguments
+                    ?.getString(GameDestination.DETAILS_ARGUMENT)
                     ?.toIntOrNull()
                 if(gameId!=null) {
+                    val detailsViewModel: GameDetailsViewModel = viewModel(
+                        factory = GameDetailsViewModel.factory(gameId)
+                    )
                     DetailsScreen(
-                        gameId= gameId,
+                        uiState = detailsViewModel.uiState,
                         onBackClick = {
                             navController.popBackStack()
                         }

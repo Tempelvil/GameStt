@@ -21,4 +21,12 @@ interface RawgApiService {
         @Path("id")gameId: Int,
         @Query("key") apiKey:String
     ): RawgGameDetailsDto
+
+    @GET("games/{id}/screenshots")
+    suspend fun getScreenshots(
+        @Path("id") gameId: Int,
+        @Query("key") apiKey: String,
+        @Query("page_size") pageSize: Int = 4
+
+    ): RawgScreenshotsDto
 }

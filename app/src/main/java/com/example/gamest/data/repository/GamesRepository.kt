@@ -18,12 +18,29 @@ class GamesRepository(
 
     suspend fun getGameDetails(
         gameId: Int
-    ): GameDetailsUiModel{
-        val response = apiService.getGamesDetails(
+    ): GameDetailsUiModel {
+
+        val detailsResponse = apiService.getGamesDetails(
             gameId = gameId,
             apiKey = apiKey
         )
-        return response.toGameDetailsUiModel()
+
+        val screenshotsResponse = apiService.getScreenshots(
+            gameId = gameId,
+            apiKey = apiKey,
+            pageSize = 4
+        )
+
+        val screenshots = screenshotsResponse.screenshots
+            .map { it.image
+            }
+            .ifEmpty {
+                listOfNotNull(detailsResponse.backgroundImage)
+            }
+
+        return detailsResponse.toGameDetailsUiModel(
+            screenshots = screenshots
+        )
     }
     suspend fun getGames(
         searchQuery: String,
@@ -61,7 +78,9 @@ class GamesRepository(
         return response.listGame.map {it.toGameUiModel()}
     }
 }
-private fun RawgGameDetailsDto.toGameDetailsUiModel(): GameDetailsUiModel {
+private fun RawgGameDetailsDto.toGameDetailsUiModel(
+    screenshots:List<String>
+): GameDetailsUiModel {
     return GameDetailsUiModel(
         id = id,
         title = name,
@@ -97,7 +116,10 @@ private fun RawgGameDetailsDto.toGameDetailsUiModel(): GameDetailsUiModel {
                 name = publisher.name,
                 slug = publisher.slug
             )
-        }
+        },
+        screenshots = screenshots,
+        isSaved = false
+
     )
 }
 
