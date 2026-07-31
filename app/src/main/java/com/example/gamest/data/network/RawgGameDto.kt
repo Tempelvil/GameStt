@@ -49,7 +49,11 @@ data class RawgGameDetailsDto(
     val genres: List<RawgGenreDto> = emptyList(),
     val platforms: List<RawgPlatformWrapperDto>? = emptyList(),
     val developers: List<RawgDeveloperDto> = emptyList(),
-    val publishers: List<RawgPublisherDto> = emptyList()
+    val publishers: List<RawgPublisherDto> = emptyList(),
+    val playtime: Int = 0,
+
+    @SerialName("esrb_rating")
+    val esrbRating: RawgEsrbRatingDto? = null
 )
 @Serializable
 data class RawgDeveloperDto(
@@ -60,6 +64,12 @@ data class RawgDeveloperDto(
 
 @Serializable
 data class RawgPublisherDto(
+    val id: Int,
+    val name: String,
+    val slug: String
+)
+@Serializable
+data class RawgEsrbRatingDto(
     val id: Int,
     val name: String,
     val slug: String

@@ -17,7 +17,7 @@ data class GameDetailsUiModel(
     val title: String,
     val imageUrl: String,
     val description: String,
-    val releaseDate: String?,
+    val releaseDate: String,
     val rating: Double,
     val metacritic: Int?,
     val genres: List<GameTagUiModel>,
@@ -25,7 +25,15 @@ data class GameDetailsUiModel(
     val developers: List<GameCompanyUiModel>,
     val publishers: List<GameCompanyUiModel>,
     val screenshots: List<String> = emptyList(),
-    val isSaved: Boolean = false
+    val isSaved: Boolean = false,
+
+    val ageRating: GameAgeRatingUiModel?,
+    val playtime: Int,
+)
+data class GameAgeRatingUiModel(
+    val id: Int,
+    val name: String,
+    val slug: String
 )
 
 data class GameTagUiModel(

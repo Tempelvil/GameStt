@@ -1,15 +1,19 @@
 package com.example.gamest.data.repository
 
-import com.example.gamest.BuildConfig
 import com.example.gamest.data.network.RawgApiService
 import com.example.gamest.data.network.RawgGameDetailsDto
 import com.example.gamest.data.network.RawgGameDto
 import com.example.gamest.data.network.RawgGamesResponseDto
+import com.example.gamest.model.GameAgeRatingUiModel
 import com.example.gamest.model.GameCompanyUiModel
 import com.example.gamest.model.GameDetailsUiModel
 import com.example.gamest.model.GameFilter
 import com.example.gamest.model.GameTagUiModel
 import com.example.gamest.model.GameUiModel
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
+import java.util.Locale
 
 class GamesRepository(
     private val apiService: RawgApiService,
@@ -78,6 +82,7 @@ class GamesRepository(
         return response.listGame.map {it.toGameUiModel()}
     }
 }
+
 private fun RawgGameDetailsDto.toGameDetailsUiModel(
     screenshots:List<String>
 ): GameDetailsUiModel {
@@ -86,7 +91,7 @@ private fun RawgGameDetailsDto.toGameDetailsUiModel(
         title = name,
         imageUrl = backgroundImage ?: "",
         description = descriptionRaw,
-        releaseDate = released,
+        releaseDate = formatReleaseDate(released),
         rating = rating,
         metacritic = metacritic,
 
@@ -117,10 +122,35 @@ private fun RawgGameDetailsDto.toGameDetailsUiModel(
                 slug = publisher.slug
             )
         },
+        playtime = playtime,
         screenshots = screenshots,
-        isSaved = false
-
+        isSaved = false,
+        ageRating = esrbRating?.let { rating ->
+            GameAgeRatingUiModel(
+                id = rating.id,
+                name = rating.name,
+                slug = rating.slug
+            )
+        },
     )
+}
+private fun formatReleaseDate(date: String?): String {
+    if (date.isNullOrBlank()) {
+        return "Unknown date"
+    }
+
+    return try {
+        LocalDate
+            .parse(date)
+            .format(
+                DateTimeFormatter.ofPattern(
+                    "MMM d, yyyy",
+                    Locale.ENGLISH
+                )
+            )
+    } catch (e: DateTimeParseException) {
+        date
+    }
 }
 
 private fun RawgGameDto.toGameUiModel(): GameUiModel {
