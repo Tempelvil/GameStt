@@ -37,15 +37,20 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Gamepad
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.VideogameAsset
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.getValue
@@ -73,12 +78,23 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import com.example.gamest.R
 import com.example.gamest.model.GameAgeRatingUiModel
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 
 @Composable
 fun DetailsScreen(
     uiState: GameDetailsUiState,
     onBackClick: () -> Unit,
-    modifier: Modifier = Modifier
+    onRetryClick:()-> Unit,
+    modifier: Modifier = Modifier,
+    onDeveloperClick:(GameCompanyUiModel) -> Unit,
+    onAgeRatingClick:(GameAgeRatingUiModel) -> Unit,
+    onPublisherClick:(GameCompanyUiModel) -> Unit,
 ) {
     when (uiState) {
         GameDetailsUiState.Loading -> {
@@ -91,24 +107,12 @@ fun DetailsScreen(
         }
 
         is GameDetailsUiState.Error -> {
-            Column(
-                modifier = modifier.fillMaxSize()
-            ) {
-                IconButton(
-                    onClick = onBackClick
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back"
-                    )
-                }
-
-                Text(
-                    text = uiState.message,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(20.dp)
-                )
-            }
+            DetailsErrorScreen(
+                message = uiState.message,
+                onBackClick = onBackClick,
+                onRetryClick = onRetryClick,
+                modifier = modifier
+            )
         }
 
         is GameDetailsUiState.Success -> {
@@ -141,7 +145,9 @@ fun DetailsScreen(
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.weight(1f).padding(top=4.dp)
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(top = 4.dp)
                         )
                     }
 
@@ -178,13 +184,108 @@ fun DetailsScreen(
                         modifier = Modifier.padding(horizontal = 20.dp)
                     )
                 }
+                item {
+                    GameAdditionalInfo(
+                        developers = game.developers,
+                        publishers = game.publishers,
+                        ageRating = game.ageRating,
+                        playtime = game.playtime,
+                        onDeveloperClick = onDeveloperClick,
+                        onPublisherClick = onPublisherClick,
+                        onAgeRatingClick = onAgeRatingClick,
+                        modifier = Modifier.padding(horizontal = 20.dp)
+                    )
+                }
 
 
             }
         }
     }
 }
+@Composable
+private fun DetailsErrorScreen(
+    message: String,
+    onBackClick: () -> Unit,
+    onRetryClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier.fillMaxSize()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.TopStart),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(
+                onClick = onBackClick,
+                modifier = Modifier.padding(start = 8.dp, top = 8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back"
+                )
+            }
 
+            Text(
+                text = "GameShelf",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+
+        Column(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .padding(horizontal = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Warning,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(48.dp)
+            )
+
+            Text(
+                text = "Couldn't load game",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Button(
+                onClick = onRetryClick
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = null
+                )
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Text("Try again")
+            }
+
+            OutlinedButton(
+                onClick = onBackClick
+            ) {
+                Text("Back to search")
+            }
+        }
+    }
+}
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -653,8 +754,295 @@ fun GameAboutSection(
 
     }
 }
+private enum class CompanyDialogType {
+    Developers,
+    Publishers
+}
 
+@Composable
+fun GameAdditionalInfo(
+    developers: List<GameCompanyUiModel>,
+    publishers: List<GameCompanyUiModel>,
+    ageRating: GameAgeRatingUiModel?,
+    playtime: Int,
+    onDeveloperClick: (GameCompanyUiModel) -> Unit,
+    onPublisherClick: (GameCompanyUiModel) -> Unit,
+    onAgeRatingClick: (GameAgeRatingUiModel) -> Unit,
+    modifier: Modifier = Modifier
+){
+    var openedDialog by rememberSaveable {
+        mutableStateOf<CompanyDialogType?>(null)
+    }
 
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(16.dp)
+            )
+    ) {
+        GameInfoRow(
+            title = "Developer",
+            value = developers
+                .joinToString(separator = ", ") { developer ->
+                    developer.name
+                }
+                .ifBlank { "No data" },
+            icon = Icons.Default.Business,
+            onClick = if (developers.isNotEmpty()) {
+                {
+                    openedDialog = CompanyDialogType.Developers
+                }
+            } else {
+                null
+            }
+        )
+
+        GameInfoDivider()
+
+        GameInfoRow(
+            title = "Publisher",
+            value = publishers
+                .joinToString(separator = ", ") { publisher ->
+                    publisher.name
+                }
+                .ifBlank { "No data" },
+            icon = Icons.Default.SportsEsports,
+            onClick = if (publishers.isNotEmpty()) {
+                {
+                    openedDialog = CompanyDialogType.Publishers
+                }
+            } else {
+                null
+            }
+        )
+
+        GameInfoDivider()
+
+        GameInfoRow(
+            title = "Age rating",
+            value = ageRating?.name ?: "No data",
+            icon = Icons.Default.Security,
+            onClick = ageRating?.let { rating ->
+                {
+                    onAgeRatingClick(rating)
+                }
+            }
+        )
+
+        GameInfoDivider()
+
+        GameInfoRow(
+            title = "Playtime",
+            value = if (playtime > 0) {
+                "$playtime h Average"
+            } else {
+                "No data"
+            },
+            icon = Icons.Default.AccessTime,
+            onClick = null
+        )
+        when (openedDialog) {
+            CompanyDialogType.Developers -> {
+                CompanySelectionDialog(
+                    title = "Developers",
+                    companies = developers,
+                    onCompanyClick = { developer ->
+                        openedDialog = null
+                        onDeveloperClick(developer)
+                    },
+                    onDismissRequest = {
+                        openedDialog = null
+                    }
+                )
+            }
+
+            CompanyDialogType.Publishers -> {
+                CompanySelectionDialog(
+                    title = "Publishers",
+                    companies = publishers,
+                    onCompanyClick = { publisher ->
+                        openedDialog = null
+                        onPublisherClick(publisher)
+                    },
+                    onDismissRequest = {
+                        openedDialog = null
+                    }
+                )
+            }
+
+            null -> Unit
+        }
+    }
+}
+
+@Composable
+private fun GameInfoRow(
+    title: String,
+    value: String,
+    icon: ImageVector,
+    onClick: (() -> Unit)?,
+    modifier: Modifier = Modifier
+) {
+    val rowModifier = if (onClick != null) {
+        modifier.clickable(onClick = onClick)
+    } else {
+        modifier
+    }
+
+    Row(
+        modifier = rowModifier
+            .fillMaxWidth()
+            .padding(
+                horizontal = 16.dp,
+                vertical = 14.dp
+            ),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = if (onClick != null || value != "No data") {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
+            modifier = Modifier.size(24.dp)
+        )
+
+        Spacer(modifier = Modifier.width(14.dp))
+
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = if (value == "No data") {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        if (onClick != null) {
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+    }
+}
+@Composable
+private fun CompanySelectionDialog(
+    title: String,
+    companies: List<GameCompanyUiModel>,
+    onCompanyClick: (GameCompanyUiModel) -> Unit,
+    onDismissRequest: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismissRequest,
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(18.dp))
+                .background(MaterialTheme.colorScheme.surface)
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(18.dp)
+                )
+                .padding(vertical = 8.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(
+                    horizontal = 20.dp,
+                    vertical = 12.dp
+                )
+            )
+
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
+            )
+
+            companies.forEachIndexed { index, company ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            onCompanyClick(company)
+                        }
+                        .padding(
+                            horizontal = 20.dp,
+                            vertical = 16.dp
+                        ),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = company.name,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    Icon(
+                        imageVector =
+                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                if (index != companies.lastIndex) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(start = 20.dp),
+                        color = MaterialTheme.colorScheme.outline
+                            .copy(alpha = 0.25f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GameInfoDivider() {
+    HorizontalDivider(
+        modifier = Modifier.padding(start = 54.dp),
+        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
+    )
+}
+//////////////????????????????????????????????//////////////
+//////////////????????PREVIEW SECTION????????////////////
+//////////////??????????????????????????????///////////
 
 @Preview(
     name = "Details Dark",
@@ -672,7 +1060,12 @@ private fun DetailsScreenDarkPreview() {
             uiState = GameDetailsUiState.Success(
                 game = previewGameDetails
             ),
-            onBackClick = {}
+            onBackClick = {},
+            onRetryClick = {},
+            modifier = Modifier,
+            onDeveloperClick = {},
+            onAgeRatingClick = {},
+            onPublisherClick = {},
         )
     }
 }
@@ -692,7 +1085,12 @@ private fun DetailsScreenLightPreview() {
             uiState = GameDetailsUiState.Success(
                 game = previewGameDetails
             ),
-            onBackClick = {}
+            onBackClick = {},
+            onRetryClick = {},
+            onDeveloperClick = {},
+            modifier = Modifier,
+            onAgeRatingClick = {},
+            onPublisherClick = {},
         )
     }
 }
@@ -728,6 +1126,11 @@ private val previewGameDetails = GameDetailsUiModel(
             id = 1,
             name = "Supergiant Games",
             slug = "supergiant-games"
+        ),
+        GameCompanyUiModel(
+            id = 2,
+            name = "Monolith Games",
+            slug = "monolith-games"
         )
     ),
     publishers = listOf(
@@ -744,11 +1147,99 @@ private val previewGameDetails = GameDetailsUiModel(
         "https://media.rawg.io/media/screenshots/example4.jpg"
     ),
     isSaved = false,
-    ageRating = GameAgeRatingUiModel(
-        id = 4,
-        name = "Mature",
-        slug = "mature"
-    ),
+    ageRating = null,
 
     playtime = 24,
 )
+@Preview(
+    name = "Details Error",
+    showBackground = true,
+    widthDp = 390,
+    heightDp = 850
+)
+@Composable
+private fun DetailsErrorPreview() {
+    GameStTheme(darkTheme = true) {
+        DetailsScreen(
+            uiState = GameDetailsUiState.Error(
+                message = "RAWG is temporarily unavailable. Please try again later."
+            ),
+            onBackClick = {},
+            onRetryClick = {},
+            modifier = Modifier,
+            onDeveloperClick = {},
+            onAgeRatingClick = {},
+            onPublisherClick = { },
+        )
+    }
+}
+// Loading Screen
+//GameDetailsUiState.Loading -> {
+//    DetailsLoadingScreen(
+//        onBackClick = onBackClick,
+//        modifier = modifier
+//    )
+//}
+//@Composable
+//private fun DetailsLoadingScreen(
+//    onBackClick: () -> Unit,
+//    modifier: Modifier = Modifier
+//) {
+//    Box(
+//        modifier = modifier.fillMaxSize()
+//    ) {
+//        Row(
+//            modifier = Modifier
+//                .fillMaxWidth()
+//                .align(Alignment.TopStart),
+//            verticalAlignment = Alignment.CenterVertically
+//        ) {
+//            IconButton(
+//                onClick = onBackClick,
+//                modifier = Modifier.padding(start = 8.dp, top = 8.dp)
+//            ) {
+//                Icon(
+//                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+//                    contentDescription = "Back"
+//                )
+//            }
+//
+//            Text(
+//                text = "GameShelf",
+//                style = MaterialTheme.typography.titleLarge,
+//                fontWeight = FontWeight.Bold,
+//                color = MaterialTheme.colorScheme.primary
+//            )
+//        }
+//
+//        Column(
+//            modifier = Modifier.align(Alignment.Center),
+//            horizontalAlignment = Alignment.CenterHorizontally,
+//            verticalArrangement = Arrangement.spacedBy(16.dp)
+//        ) {
+//            CircularProgressIndicator()
+//
+//            Text(
+//                text = "Loading game details...",
+//                style = MaterialTheme.typography.bodyMedium,
+//                color = MaterialTheme.colorScheme.onSurfaceVariant
+//            )
+//        }
+//    }
+//}
+//@Preview(
+//    name = "Details Loading",
+//    showBackground = true,
+//    widthDp = 390,
+//    heightDp = 850
+//)
+//@Composable
+//private fun DetailsLoadingPreview() {
+//    GameStTheme(darkTheme = true) {
+//        DetailsScreen(
+//            uiState = GameDetailsUiState.Loading,
+//            onBackClick = {},
+//            onRetryClick = {}
+//        )
+//    }
+//}

@@ -69,15 +69,34 @@ class GamesRepository(
             filter == GameFilter.TopRated -> "-metacritic"
             else -> "-metacritic"
         }
+        val developers = when{
+            search != null -> null
+            filter is GameFilter.Developer -> filter.id.toString()
+            else -> null
+        }
+        val publishers = when{
+            search != null ->null
+            filter is GameFilter.Publisher -> filter.id.toString()
+            else -> null
+        }
+        val esrbRating = when{
+            search != null -> null
+            filter is GameFilter.AgeRating -> filter.id.toString()
+            else ->null
+        }
         val response = apiService.getGames(
             apiKey = apiKey,
             pageSize = 20,
             search = search,
-            Page = page,
+            page = page,
             genres = genres,
             platforms = platforms,
-            ordering = ordering
+            ordering = ordering,
+            esrbRating = esrbRating,
+            publishers = publishers,
+            developers = developers,
         )
+
 
         return response.listGame.map {it.toGameUiModel()}
     }

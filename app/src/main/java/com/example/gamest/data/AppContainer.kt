@@ -6,7 +6,9 @@ import com.example.gamest.data.repository.GamesRepository
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
 import retrofit2.Retrofit
+import java.util.concurrent.TimeUnit
 
 interface AppContainer {
     val gamesRepository: GamesRepository
@@ -20,8 +22,15 @@ class DefaultAppContainer : AppContainer {
         ignoreUnknownKeys = true
     }
 
+    private val okHttpClient = OkHttpClient.Builder()
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .build()
+
     private val retrofit = Retrofit.Builder()
         .baseUrl(baseUrl)
+        .client(okHttpClient)
         .addConverterFactory(
             json.asConverterFactory("application/json".toMediaType())
         )
@@ -30,6 +39,7 @@ class DefaultAppContainer : AppContainer {
     private val rawgApiService: RawgApiService by lazy {
         retrofit.create(RawgApiService::class.java)
     }
+
 
     override val gamesRepository: GamesRepository by lazy {
         GamesRepository(

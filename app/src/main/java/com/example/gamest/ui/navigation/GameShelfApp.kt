@@ -16,6 +16,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.gamest.model.GameFilter
 import com.example.gamest.ui.components.GameBottomBar
 import com.example.gamest.ui.components.GameTopBar
 import com.example.gamest.ui.screens.details.DetailsScreen
@@ -81,7 +82,7 @@ fun GameShelfApp(
                         searchViewModel.onSearchQueryChange(str)
                     },
                     onSaveGameClick = {game->searchViewModel.onSaveGameClick(game)},
-                    onGenreClick = {filter->searchViewModel.onGenreClick(filter)},
+                    onGenreClick = {filter->searchViewModel.applyFilter(filter)},
                     onMoreGenreClick = {},
                     onLoadNextPage = {searchViewModel.loadNextPage()},
                     modifier = Modifier,
@@ -113,7 +114,53 @@ fun GameShelfApp(
                         uiState = detailsViewModel.uiState,
                         onBackClick = {
                             navController.popBackStack()
-                        }
+                        },
+                        onRetryClick = { detailsViewModel.retry() },
+                        modifier = Modifier,
+                        onDeveloperClick = { developer ->
+                            searchViewModel.applyFilter(
+                                GameFilter.Developer(
+                                    id = developer.id,
+                                    name = developer.name
+                                )
+                            )
+
+                            navController.navigate(GameDestination.SEARCH) {
+                                popUpTo(GameDestination.SEARCH) {
+                                    inclusive = false
+                                }
+                                launchSingleTop = true
+                            }
+                        },
+                        onAgeRatingClick = {ageRating ->
+                            searchViewModel.applyFilter(
+                                GameFilter.AgeRating(
+                                    id = ageRating.id,
+                                    name = ageRating.name
+                                )
+                            )
+                            navController.navigate(GameDestination.SEARCH){
+                                popUpTo(GameDestination.SEARCH){
+                                    inclusive = false
+                                }
+                                launchSingleTop = true
+                            }
+                        },
+                        onPublisherClick = {publisher ->
+                            searchViewModel.applyFilter(
+                                GameFilter.Publisher(
+                                    id = publisher.id,
+                                    name = publisher.name
+                                )
+                            )
+
+                            navController.navigate(GameDestination.SEARCH){
+                                popUpTo(GameDestination.SEARCH){
+                                    inclusive = false
+                                }
+                                launchSingleTop = false
+                            }
+                        },
                     )
                 }else{
                     Text("Game id not found")

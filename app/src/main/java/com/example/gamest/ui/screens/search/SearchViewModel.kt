@@ -55,9 +55,11 @@ class SearchViewModel(
                     canLoadMore = games.isNotEmpty()
                 )
             } catch (e: Exception) {
+                e.printStackTrace()
+
                 uiState = uiState.copy(
                     isLoading = false,
-                    errorMessage = e.message ?: "Unknown error"
+                    errorMessage = "${e::class.simpleName}: ${e.message}"
                 )
             }
         }
@@ -90,9 +92,11 @@ class SearchViewModel(
                     canLoadMore = newGames.isNotEmpty()
                 )
             } catch (e: Exception) {
+                e.printStackTrace()
+
                 uiState = uiState.copy(
                     isLoadingMore = false,
-                    errorMessage = e.message ?: "Unknown error"
+                    errorMessage = "${e::class.simpleName}: ${e.message}"
                 )
             }
         }
@@ -116,13 +120,18 @@ class SearchViewModel(
         }
     }
 
-    fun onGenreClick(filter: GameFilter) {
+    fun applyFilter(filter: GameFilter) {
+        searchJob?.cancel()
+
         uiState = uiState.copy(
+            searchQuery = "",
             selectedFilter = filter,
             games = emptyList(),
             page = 1,
-            canLoadMore = true
+            canLoadMore = true,
+            errorMessage = null
         )
+
         loadGames()
     }
 

@@ -13,6 +13,9 @@ import com.example.gamest.GameStApplication
 import com.example.gamest.data.repository.GamesRepository
 import com.example.gamest.model.GameDetailsUiModel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
+import retrofit2.HttpException
+import java.io.IOException
 
 class GameDetailsViewModel(
     private val gameId: Int,
@@ -36,11 +39,36 @@ class GameDetailsViewModel(
                 GameDetailsUiState.Success(
                     game=game
                 )
-            }catch (e: Exception){
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: HttpException) {
                 GameDetailsUiState.Error(
-                    message = e.message?:"Unknown error"
+                    message = getHttpErrorMessage(e.code())
+                )
+            } catch (e: IOException) {
+                GameDetailsUiState.Error(
+                    message = "Unable to connect to RAWG. Check your internet connection and try again."
+                )
+            } catch (e: Exception) {
+                GameDetailsUiState.Error(
+                    message = "An unexpected error occurred. Please try again."
                 )
             }
+        }
+    }
+    fun retry() {
+        loadGameDetails()
+    }
+    private fun getHttpErrorMessage(code: Int): String {
+        return when (code) {
+            401 -> "The RAWG API key is invalid."
+            403 -> "Access to the RAWG API is denied."
+            404 -> "Game information was not found."
+            429 -> "The RAWG request limit has been exceeded."
+            500, 502, 503, 504, 522 ->
+                "RAWG is temporarily unavailable. Please try again later."
+
+            else -> "Server error. HTTP code: $code"
         }
     }
     companion object{
