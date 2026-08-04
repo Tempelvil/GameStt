@@ -31,6 +31,36 @@ class SearchViewModel(
 
     private var searchJob: Job?=null
 
+    fun loadGenres() {
+        if (
+            uiState.availableGenres.isNotEmpty() ||
+            uiState.isGenresLoading
+        ) {
+            return
+        }
+
+        viewModelScope.launch {
+            uiState = uiState.copy(
+                isGenresLoading = true,
+                genresErrorMessage = null
+            )
+
+            try {
+                val genres = repository.getGenres()
+
+                uiState = uiState.copy(
+                    availableGenres = genres,
+                    isGenresLoading = false
+                )
+            } catch (e: Exception) {
+                uiState = uiState.copy(
+                    isGenresLoading = false,
+                    genresErrorMessage =
+                        "Unable to load genres"
+                )
+            }
+        }
+    }
     private fun loadGames() {
         viewModelScope.launch {
             uiState = uiState.copy(

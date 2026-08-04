@@ -2,6 +2,8 @@ package com.example.gamest.ui.screens.search
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,9 +14,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -22,25 +26,34 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.items as lazyColumnItems
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.StarOutline
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,8 +64,16 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.gamest.model.GameFilter
+import com.example.gamest.model.GameTagUiModel
 import com.example.gamest.model.GameUiModel
 import com.example.gamest.ui.theme.GameStTheme
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.draw.clip
+
 
 @Composable
 fun SearchScreen(
@@ -61,11 +82,17 @@ fun SearchScreen(
     onSaveGameClick: (Int) -> Unit,
     onGenreClick: (GameFilter) -> Unit,
     onMoreGenreClick:()->Unit,
+    onGenreSelected: (GameTagUiModel) -> Unit,
+    onRetryGenresClick: () -> Unit,
     onLoadNextPage:()->Unit,
     onGameClick:(Int)->Unit,
     modifier: Modifier = Modifier
 ) {
     val gridState = rememberLazyGridState()
+
+    var showGenresSheet by rememberSaveable {
+        mutableStateOf(false)
+    }
 
     LaunchedEffect(gridState, uiState.games.size) {
         snapshotFlow {
@@ -137,7 +164,10 @@ fun SearchScreen(
             GenreChipsRow(
                 selectedGenre = uiState.selectedFilter,
                 onGenreClick = onGenreClick,
-                onMoreGenreClick = onMoreGenreClick
+                onMoreGenreClick = {
+                    showGenresSheet = true
+                    onMoreGenreClick()
+                }
             )
         }
         if (uiState.isLoading) {
@@ -178,9 +208,181 @@ fun SearchScreen(
 
 
     }
+    if (showGenresSheet) {
+        GenresBottomSheet(
+            genres = uiState.availableGenres,
+            isLoading = uiState.isGenresLoading,
+            errorMessage = uiState.genresErrorMessage,
+            onGenreClick = { genre ->
+                showGenresSheet = false
+                onGenreSelected(genre)
+            },
+            onRetryClick = onRetryGenresClick,
+            onDismissRequest = {
+                showGenresSheet = false
+            }
+        )
+    }
 
 }
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun GenresBottomSheet(
+    genres: List<GameTagUiModel>,
+    isLoading: Boolean,
+    errorMessage: String?,
+    onGenreClick: (GameTagUiModel) -> Unit,
+    onRetryClick: () -> Unit,
+    onDismissRequest: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismissRequest,
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(
+                    min = 220.dp,
+                    max = 600.dp
+                )
+                .clip(RoundedCornerShape(20.dp))
+                .background(MaterialTheme.colorScheme.surface)
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outline
+                        .copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(20.dp)
+                )
+        ) {
+            Text(
+                text = "All genres",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(
+                    horizontal = 20.dp,
+                    vertical = 18.dp
+                )
+            )
 
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outline
+                    .copy(alpha = 0.35f)
+            )
+
+            when {
+                isLoading -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+
+                errorMessage != null -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = errorMessage,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Button(
+                            onClick = onRetryClick
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = null
+                            )
+
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            Text("Try again")
+                        }
+                    }
+                }
+
+                genres.isEmpty() -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No genres available",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                    ) {
+                        lazyColumnItems(
+                            items = genres,
+                            key = { genre -> genre.id }
+                        ) { genre ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        onGenreClick(genre)
+                                    }
+                                    .padding(
+                                        horizontal = 20.dp,
+                                        vertical = 16.dp
+                                    ),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = genre.name,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.weight(1f)
+                                )
+
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled
+                                        .KeyboardArrowRight,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme
+                                        .onSurfaceVariant
+                                )
+                            }
+
+                            if (genre != genres.last()) {
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(start = 20.dp),
+                                    color = MaterialTheme.colorScheme.outline
+                                        .copy(alpha = 0.25f)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 @Composable
 fun GameCard(
     game: GameUiModel,
@@ -387,15 +589,74 @@ fun SearchScreenPreview() {
                         genres = listOf("RPG", "Action"),
                         platforms = listOf("PC", "Xbox")
                     )
+                ),
+                availableGenres = listOf(
+                    GameTagUiModel(
+                        id = 1,
+                        name = "Action",
+                        slug = "action"
+                    ),
+                    GameTagUiModel(
+                        id = 2,
+                        name = "RPG",
+                        slug = "role-playing-games-rpg"
+                    ),
+                    GameTagUiModel(
+                        id = 3,
+                        name = "Adventure",
+                        slug = "adventure"
+                    ),
+                    GameTagUiModel(
+                        id = 4,
+                        name = "Strategy",
+                        slug = "strategy"
+                    ),
+                    GameTagUiModel(
+                        id = 5,
+                        name = "Shooter",
+                        slug = "shooter"
+                    ),
+                    GameTagUiModel(
+                        id = 6,
+                        name = "Shooter",
+                        slug = "shooter"
+                    ),
+                    GameTagUiModel(
+                        id = 7,
+                        name = "Shooter",
+                        slug = "shooter"
+                    ),
+                    GameTagUiModel(
+                        id = 8,
+                        name = "Shooter",
+                        slug = "shooter"
+                    ),
+                    GameTagUiModel(
+                        id = 9,
+                        name = "Shooter",
+                        slug = "shooter"
+                    ),
+                    GameTagUiModel(
+                        id = 10,
+                        name = "Shooter",
+                        slug = "shooter"
+                    ),
+                    GameTagUiModel(
+                        id = 11,
+                        name = "Shooter",
+                        slug = "shooter"
+                    )
                 )
             ),
             onSearchQueryChange = {},
             onSaveGameClick = {},
             onGenreClick = {},
-            modifier = Modifier,
             onMoreGenreClick = {},
+            onGenreSelected = {},
+            onRetryGenresClick = {},
             onLoadNextPage = {},
-            onGameClick = {}
+            onGameClick = {},
+            modifier = Modifier
         )
     }
 }

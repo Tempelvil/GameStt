@@ -1,16 +1,18 @@
 import java.util.Properties
 
+
+
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.compose)
+    id("com.google.devtools.ksp") version "2.2.10-2.0.2"
+    kotlin("plugin.serialization") version "2.2.10"
+}
 val localProperties = Properties().apply {
     load(rootProject.file("local.properties").inputStream())
 }
 
 val rawgApiKey = localProperties.getProperty("RAWG_API_KEY") ?: ""
-
-plugins {
-    alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.compose)
-    kotlin("plugin.serialization") version "2.2.10"
-}
 
 android {
     namespace = "com.example.gamest"
@@ -84,4 +86,8 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.7.0")
     //Navigation
     implementation("androidx.navigation:navigation-compose:2.9.0")
+    //Room
+    implementation("androidx.room:room-runtime:2.8.4")
+    implementation("androidx.room:room-ktx:2.8.4")
+    ksp("androidx.room:room-compiler:2.8.4")
 }

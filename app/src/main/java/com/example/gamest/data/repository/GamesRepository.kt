@@ -46,6 +46,18 @@ class GamesRepository(
             screenshots = screenshots
         )
     }
+    suspend fun getGenres():List<GameTagUiModel>{
+        val response = apiService.getGenres(
+            apiKey = apiKey
+        )
+        return response.genres.map{ genre ->
+            GameTagUiModel(
+                id = genre.id,
+                name = genre.name,
+                slug = genre.slug
+            )
+        }
+    }
     suspend fun getGames(
         searchQuery: String,
         filter: GameFilter,
@@ -57,6 +69,7 @@ class GamesRepository(
             search !=null ->null
             filter == GameFilter.Rpg -> "role-playing-games-rpg"
             filter == GameFilter.Action -> "action"
+            filter is GameFilter.Genres -> filter.slug
             else -> null
         }
         val platforms = when{

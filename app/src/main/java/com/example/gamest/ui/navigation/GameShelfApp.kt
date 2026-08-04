@@ -78,19 +78,46 @@ fun GameShelfApp(
             composable(GameDestination.SEARCH){
                 SearchScreen(
                     uiState = searchViewModel.uiState,
-                    onSearchQueryChange = {str->
-                        searchViewModel.onSearchQueryChange(str)
+
+                    onSearchQueryChange = {
+                        searchViewModel.onSearchQueryChange(it)
                     },
-                    onSaveGameClick = {game->searchViewModel.onSaveGameClick(game)},
-                    onGenreClick = {filter->searchViewModel.applyFilter(filter)},
-                    onMoreGenreClick = {},
-                    onLoadNextPage = {searchViewModel.loadNextPage()},
-                    modifier = Modifier,
-                    onGameClick= { gameId->
+
+                    onSaveGameClick = {
+                        searchViewModel.onSaveGameClick(it)
+                    },
+
+                    onGenreClick = { filter ->
+                        searchViewModel.applyFilter(filter)
+                    },
+
+                    onMoreGenreClick = {
+                        searchViewModel.loadGenres()
+                    },
+
+                    onGenreSelected = { genre ->
+                        searchViewModel.applyFilter(
+                            GameFilter.Genres(
+                                id = genre.id,
+                                name = genre.name,
+                                slug = genre.slug
+                            )
+                        )
+                    },
+
+                    onRetryGenresClick = {
+                        searchViewModel.loadGenres()
+                    },
+
+                    onLoadNextPage = {
+                        searchViewModel.loadNextPage()
+                    },
+
+                    onGameClick = { gameId ->
                         navController.navigate(
                             GameDestination.createDetailsRoute(gameId)
                         )
-                    },
+                    }
                 )
             }
             composable(GameDestination.COLLECTION) {
