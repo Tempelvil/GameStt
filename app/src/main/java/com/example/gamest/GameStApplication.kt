@@ -9,6 +9,8 @@ class GameStApplication : Application(){
 
     override fun onCreate() {
         super.onCreate()
-        container = DefaultAppContainer()
+        container = DefaultAppContainer(
+            context =applicationContext
+        )
     }
 }

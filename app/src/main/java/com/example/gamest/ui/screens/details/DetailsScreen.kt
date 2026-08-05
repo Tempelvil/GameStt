@@ -79,23 +79,44 @@ import androidx.compose.ui.text.style.TextOverflow
 import com.example.gamest.R
 import com.example.gamest.model.GameAgeRatingUiModel
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.gamest.data.local.GameStatus
 
 @Composable
 fun DetailsScreen(
     uiState: GameDetailsUiState,
     onBackClick: () -> Unit,
-    onRetryClick:()-> Unit,
+    onRetryClick: () -> Unit,
+    onSaveConfirm: (
+        status: GameStatus,
+        userRating: Int?,
+        hoursPlayed: Int
+    ) -> Unit,
+    onDeleteConfirm: () -> Unit,
     modifier: Modifier = Modifier,
-    onDeveloperClick:(GameCompanyUiModel) -> Unit,
-    onAgeRatingClick:(GameAgeRatingUiModel) -> Unit,
-    onPublisherClick:(GameCompanyUiModel) -> Unit,
+    onDeveloperClick: (GameCompanyUiModel) -> Unit,
+    onAgeRatingClick: (GameAgeRatingUiModel) -> Unit,
+    onPublisherClick: (GameCompanyUiModel) -> Unit,
 ) {
+    var showSaveDialog by rememberSaveable {
+        mutableStateOf(false)
+    }
+
+    var showDeleteDialog by rememberSaveable {
+        mutableStateOf(false)
+    }
+
     when (uiState) {
         GameDetailsUiState.Loading -> {
             Box(
@@ -164,7 +185,11 @@ fun DetailsScreen(
                     GameDetailsHeader(
                         game = game,
                         onSaveClick = {
-                            // позже подключим Room
+                            if (game.isSaved) {
+                                showDeleteDialog = true
+                            } else {
+                                showSaveDialog = true
+                            }
                         },
                         modifier = Modifier.padding(horizontal = 20.dp)
                     )
@@ -199,9 +224,242 @@ fun DetailsScreen(
 
 
             }
+            if (showSaveDialog) {
+                SaveGameDialog(
+                    defaultHours = game.playtime,
+                    onDismissRequest = {
+                        showSaveDialog = false
+                    },
+                    onConfirm = { status, userRating, hoursPlayed ->
+                        showSaveDialog = false
+
+                        onSaveConfirm(
+                            status,
+                            userRating,
+                            hoursPlayed
+                        )
+                    }
+                )
+            }
+
+            if (showDeleteDialog) {
+                DeleteGameConfirmationDialog(
+                    gameTitle = game.title,
+                    onDismissRequest = {
+                        showDeleteDialog = false
+                    },
+                    onConfirm = {
+                        showDeleteDialog = false
+                        onDeleteConfirm()
+                    }
+                )
+            }
         }
     }
 }
+@Composable
+private fun SaveGameDialog(
+    defaultHours: Int,
+    onDismissRequest: () -> Unit,
+    onConfirm: (
+        status: GameStatus,
+        userRating: Int?,
+        hoursPlayed: Int
+    ) -> Unit
+) {
+    var selectedStatus by rememberSaveable {
+        mutableStateOf(GameStatus.PLANNED)
+    }
+
+    var ratingText by rememberSaveable {
+        mutableStateOf("")
+    }
+
+    var hoursText by rememberSaveable(defaultHours) {
+        mutableStateOf(
+            defaultHours
+                .takeIf { it > 0 }
+                ?.toString()
+                .orEmpty()
+        )
+    }
+
+    val userRating = ratingText.toIntOrNull()
+    val hoursPlayed = hoursText.toIntOrNull() ?: 0
+
+    val isRatingValid =
+        ratingText.isBlank() || userRating in 1..10
+
+    val isHoursValid =
+        hoursText.isBlank() || hoursPlayed >= 0
+
+    Dialog(
+        onDismissRequest = onDismissRequest,
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                text = "Add to collection",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+
+            Text(
+                text = "Choose a section",
+                style = MaterialTheme.typography.titleSmall
+            )
+
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                GameStatus.entries.forEach { status ->
+                    FilterChip(
+                        selected = selectedStatus == status,
+                        onClick = {
+                            selectedStatus = status
+                        },
+                        label = {
+                            Text(status.toDisplayName())
+                        }
+                    )
+                }
+            }
+
+            OutlinedTextField(
+                value = ratingText,
+                onValueChange = { newValue ->
+                    if (
+                        newValue.isBlank() ||
+                        newValue.all(Char::isDigit)
+                    ) {
+                        ratingText = newValue.take(2)
+                    }
+                },
+                label = {
+                    Text("Your rating")
+                },
+                supportingText = {
+                    Text("Optional, from 1 to 10")
+                },
+                isError = !isRatingValid,
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Number
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            OutlinedTextField(
+                value = hoursText,
+                onValueChange = { newValue ->
+                    if (
+                        newValue.isBlank() ||
+                        newValue.all(Char::isDigit)
+                    ) {
+                        hoursText = newValue
+                    }
+                },
+                label = {
+                    Text("Hours played")
+                },
+                supportingText = {
+                    if (defaultHours > 0) {
+                        Text(
+                            "RAWG suggested value: $defaultHours h"
+                        )
+                    } else {
+                        Text("Enter 0 if you haven't played yet")
+                    }
+                },
+                isError = !isHoursValid,
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Number
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                TextButton(
+                    onClick = onDismissRequest
+                ) {
+                    Text("Cancel")
+                }
+
+                Button(
+                    onClick = {
+                        onConfirm(
+                            selectedStatus,
+                            userRating,
+                            hoursPlayed
+                        )
+                    },
+                    enabled = isRatingValid && isHoursValid
+                ) {
+                    Text("Save")
+                }
+            }
+        }
+    }
+}
+
+private fun GameStatus.toDisplayName(): String {
+    return when (this) {
+        GameStatus.PLANNED -> "Planned"
+        GameStatus.PLAYING -> "Playing"
+        GameStatus.COMPLETED -> "Completed"
+        GameStatus.DROPPED -> "Dropped"
+        else -> ""
+    }
+}
+
+@Composable
+private fun DeleteGameConfirmationDialog(
+    gameTitle: String,
+    onDismissRequest: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        title = {
+            Text("Remove from collection?")
+        },
+        text = {
+            Text(
+                text = "Are you sure you want to remove \"$gameTitle\" from your collection? Your rating, status and played hours will be deleted."
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm
+            ) {
+                Text("Remove")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismissRequest
+            ) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
 @Composable
 private fun DetailsErrorScreen(
     message: String,
@@ -468,13 +726,23 @@ fun GameDetailsHeader(
             shape = RoundedCornerShape(14.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.BookmarkBorder,
+                imageVector = if (game.isSaved) {
+                    Icons.Default.Bookmark
+                } else {
+                    Icons.Default.BookmarkBorder
+                },
                 contentDescription = null
             )
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            Text("Save to collection")
+            Text(
+                text = if (game.isSaved) {
+                    "Remove from collection"
+                } else {
+                    "Save to collection"
+                }
+            )
         }
     }
 }
@@ -1066,6 +1334,8 @@ private fun DetailsScreenDarkPreview() {
             onDeveloperClick = {},
             onAgeRatingClick = {},
             onPublisherClick = {},
+            onSaveConfirm = { _, _, _ -> },
+            onDeleteConfirm = {}
         )
     }
 }
@@ -1091,6 +1361,8 @@ private fun DetailsScreenLightPreview() {
             modifier = Modifier,
             onAgeRatingClick = {},
             onPublisherClick = {},
+            onSaveConfirm = { _, _, _ -> },
+            onDeleteConfirm = {}
         )
     }
 }
@@ -1170,6 +1442,8 @@ private fun DetailsErrorPreview() {
             onDeveloperClick = {},
             onAgeRatingClick = {},
             onPublisherClick = { },
+            onSaveConfirm = { _, _, _ -> },
+            onDeleteConfirm = {}
         )
     }
 }

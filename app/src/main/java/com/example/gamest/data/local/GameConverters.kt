@@ -1,15 +1,66 @@
 package com.example.gamest.data.local
 
 import androidx.room.TypeConverter
-import androidx.room.TypeConverters
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
-class GameConverters (){
+class GameConverters {
+
+    private val json = Json {
+        ignoreUnknownKeys = true
+    }
+
     @TypeConverter
-    fun fromGameToStatus(status: GameStatus): String{
+    fun fromGameStatus(status: GameStatus): String {
         return status.name
     }
+
     @TypeConverter
-    fun toGameFromStatus(value: String): GameStatus{
+    fun toGameStatus(value: String): GameStatus {
         return GameStatus.valueOf(value)
+    }
+
+    @TypeConverter
+    fun fromStoredTags(tags: List<StoredTag>): String {
+        return json.encodeToString(tags)
+    }
+
+    @TypeConverter
+    fun toStoredTags(value: String): List<StoredTag> {
+        return json.decodeFromString(value)
+    }
+
+    @TypeConverter
+    fun fromStoredCompanies(companies: List<StoredCompany>): String {
+        return json.encodeToString(companies)
+    }
+
+    @TypeConverter
+    fun toStoredCompanies(value: String): List<StoredCompany> {
+        return json.decodeFromString(value)
+    }
+
+    @TypeConverter
+    fun fromStringList(values: List<String>): String {
+        return json.encodeToString(values)
+    }
+
+    @TypeConverter
+    fun toStringList(value: String): List<String> {
+        return json.decodeFromString(value)
+    }
+
+    @TypeConverter
+    fun fromAgeRating(ageRating: StoredAgeRating?): String? {
+        return ageRating?.let {
+            json.encodeToString(it)
+        }
+    }
+
+    @TypeConverter
+    fun toAgeRating(value: String?): StoredAgeRating? {
+        return value?.let {
+            json.decodeFromString(it)
+        }
     }
 }

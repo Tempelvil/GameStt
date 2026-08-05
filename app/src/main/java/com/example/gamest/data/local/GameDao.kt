@@ -19,17 +19,23 @@ interface GameDao {
     suspend fun getGameById(gameId: Int): GameEntity?
 
     @Query("SELECT EXISTS(SELECT 1 FROM saved_games WHERE id = :gameId)")
-    fun observeGameSaved(gameId: Int): Flow<Boolean>
+    fun observeIsGameSaved(gameId: Int): Flow<Boolean>
 
-    @Query("Select*From saved_games Order By savedAt DESC")
-    fun getGamesSortedOnDate(): Flow<List<GameEntity>>
+    @Query("SELECT * FROM saved_games WHERE id = :gameId LIMIT 1")
+    fun observeGameById(gameId: Int): Flow<GameEntity?>
+
+    @Query("""
+        SELECT * FROM saved_games
+        ORDER BY savedAt DESC
+    """)
+    fun getAllGames():Flow<List<GameEntity>>
 
     @Query("""
         SELECT * FROM saved_games
         WHERE status = :status
         ORDER BY savedAt Desc
     """)
-    fun getGameByStatus(status: GameStatus):Flow<List<GameEntity>>
+    fun getGamesByStatus(status: GameStatus):Flow<List<GameEntity>>
     @Query("""
         UPDATE saved_games
         SET status = :status
@@ -39,4 +45,48 @@ interface GameDao {
         status: GameStatus,
         gameId: Int
     )
+    @Query("""
+        UPDATE saved_games
+        SET userRating =:userRating
+        WHERE id =:gameId
+    """)
+    suspend fun updateUserRating(
+        userRating: Int?,
+        gameId: Int
+    )
+    @Query(
+        """
+    UPDATE saved_games
+    SET hoursPlayed = :hoursPlayed
+    WHERE id = :gameId
+    """
+    )
+    suspend fun updateHoursPlayed(
+        gameId: Int,
+        hoursPlayed: Int
+    )
+    @Query(
+        """
+    SELECT * FROM saved_games
+    ORDER BY title COLLATE NOCASE ASC
+    """
+    )
+    fun getGamesSortedByTitle(): Flow<List<GameEntity>>
+
+    @Query(
+        """
+    SELECT * FROM saved_games
+    ORDER BY userRating DESC
+    """
+    )
+    fun getGamesSortedByUserRating(): Flow<List<GameEntity>>
+
+    @Query(
+        """
+    SELECT * FROM saved_games
+    ORDER BY hoursPlayed DESC
+    """
+    )
+    fun getGamesSortedByHoursPlayed(): Flow<List<GameEntity>>
+
 }

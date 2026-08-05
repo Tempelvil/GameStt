@@ -173,6 +173,16 @@ fun GameShelfApp(
                                 launchSingleTop = true
                             }
                         },
+                        onSaveConfirm = { status, userRating, hoursPlayed ->
+                            detailsViewModel.saveGame(
+                                status = status,
+                                userRating = userRating,
+                                hoursPlayed = hoursPlayed
+                            )
+                        },
+                        onDeleteConfirm = {
+                            detailsViewModel.deleteGame()
+                        },
                         onPublisherClick = {publisher ->
                             searchViewModel.applyFilter(
                                 GameFilter.Publisher(
