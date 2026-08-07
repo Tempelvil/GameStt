@@ -89,4 +89,34 @@ interface GameDao {
     )
     fun getGamesSortedByHoursPlayed(): Flow<List<GameEntity>>
 
+    @Query(
+        """
+    SELECT * FROM saved_games
+    WHERE (:status IS NULL OR status = :status)
+    ORDER BY
+        CASE
+            WHEN :sort = 'TITLE'
+            THEN title
+        END COLLATE NOCASE ASC,
+
+        CASE
+            WHEN :sort = 'USER_RATING'
+            THEN userRating
+        END DESC,
+
+        CASE
+            WHEN :sort = 'HOURS_PLAYED'
+            THEN hoursPlayed
+        END DESC,
+
+        CASE
+            WHEN :sort = 'RECENTLY_ADDED'
+            THEN savedAt
+        END DESC
+    """
+    )
+    fun observeGames(
+        status: GameStatus?,
+        sort: String
+    ): Flow<List<GameEntity>>
 }

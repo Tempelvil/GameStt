@@ -14,6 +14,8 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import java.util.concurrent.TimeUnit
+import com.example.gamest.data.offline.OfflineMode
+import com.example.gamest.data.offline.OfflineRawgApiService
 
 interface AppContainer {
     val gamesRepository: GamesRepository
@@ -59,7 +61,12 @@ class DefaultAppContainer(
         .build()
 
     private val rawgApiService: RawgApiService by lazy {
-        retrofit.create(RawgApiService::class.java)
+
+        if (OfflineMode.enabled) {
+            OfflineRawgApiService()
+        } else {
+            retrofit.create(RawgApiService::class.java)
+        }
     }
 
 

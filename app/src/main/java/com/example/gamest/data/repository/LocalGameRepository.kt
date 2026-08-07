@@ -2,6 +2,7 @@ package com.example.gamest.data.repository
 
 
 import com.example.gamest.data.local.GameEntity
+import com.example.gamest.data.local.GameSort
 import com.example.gamest.data.local.GameStatus
 import kotlinx.coroutines.flow.Flow
 
@@ -53,4 +54,9 @@ interface LocalGamesRepository {
     fun getGamesSortedByUserRating(): Flow<List<GameEntity>>
 
     fun getGamesSortedByHoursPlayed(): Flow<List<GameEntity>>
+
+    fun observeGames(
+        status: GameStatus?,
+        sort: GameSort
+    ): Flow<List<GameEntity>>
 }

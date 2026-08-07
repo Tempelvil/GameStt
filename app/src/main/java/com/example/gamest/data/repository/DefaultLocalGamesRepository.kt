@@ -2,6 +2,7 @@ package com.example.gamest.data.repository
 
 import com.example.gamest.data.local.GameDao
 import com.example.gamest.data.local.GameEntity
+import com.example.gamest.data.local.GameSort
 import com.example.gamest.data.local.GameStatus
 import kotlinx.coroutines.flow.Flow
 
@@ -89,5 +90,16 @@ class DefaultLocalGamesRepository(
 
     override fun getGamesSortedByHoursPlayed(): Flow<List<GameEntity>> {
         return gameDao.getGamesSortedByHoursPlayed()
+    }
+
+    override fun observeGames(
+        status: GameStatus?,
+        sort: GameSort
+    ): Flow<List<GameEntity>> {
+
+        return gameDao.observeGames(
+            status = status,
+            sort = sort.name
+        )
     }
 }

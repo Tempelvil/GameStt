@@ -158,7 +158,8 @@ fun DetailsScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back"
+                                contentDescription = "Back",
+                                tint = MaterialTheme.colorScheme.primary
                             )
                         }
                         Text(
@@ -297,42 +298,98 @@ private fun SaveGameDialog(
         onDismissRequest = onDismissRequest,
         properties = DialogProperties(
             dismissOnBackPress = true,
-            dismissOnClickOutside = true
+            dismissOnClickOutside = true,
+            usePlatformDefaultWidth = false
         )
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
-                .background(MaterialTheme.colorScheme.surface)
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .fillMaxWidth(0.96f)
+                .clip(RoundedCornerShape(24.dp))
+                .background(
+                    MaterialTheme.colorScheme.surface
+                )
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outline
+                        .copy(alpha = 0.35f),
+                    shape = RoundedCornerShape(24.dp)
+                )
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
+
             Text(
                 text = "Add to collection",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
             )
 
-            Text(
-                text = "Choose a section",
-                style = MaterialTheme.typography.titleSmall
-            )
-
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+            Column(
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                GameStatus.entries.forEach { status ->
-                    FilterChip(
-                        selected = selectedStatus == status,
-                        onClick = {
-                            selectedStatus = status
-                        },
-                        label = {
-                            Text(status.toDisplayName())
+                Text(
+                    text = "Collection section",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(46.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.outline
+                                .copy(alpha = 0.55f),
+                            shape = RoundedCornerShape(12.dp)
+                        ),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    GameStatus.entries.forEachIndexed { index, status ->
+
+                        val isSelected =
+                            selectedStatus == status
+
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxSize()
+                                .background(
+                                    color = if (isSelected) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        Color.Transparent
+                                    }
+                                )
+                                .clickable {
+                                    selectedStatus = status
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = status.toDisplayName(),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (isSelected) {
+                                    MaterialTheme.colorScheme.onPrimary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                },
+                                maxLines = 1
+                            )
                         }
-                    )
+
+                        if (index != GameStatus.entries.lastIndex) {
+                            VerticalDivider(
+                                modifier = Modifier.height(26.dp),
+                                color = MaterialTheme.colorScheme.outline
+                                    .copy(alpha = 0.4f)
+                            )
+                        }
+                    }
                 }
             }
 
@@ -349,8 +406,14 @@ private fun SaveGameDialog(
                 label = {
                     Text("Your rating")
                 },
+                placeholder = {
+                    Text("1–10")
+                },
                 supportingText = {
-                    Text("Optional, from 1 to 10")
+                    Text(
+                        text = "Optional, from 1 to 10",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 },
                 isError = !isRatingValid,
                 singleLine = true,
@@ -374,13 +437,14 @@ private fun SaveGameDialog(
                     Text("Hours played")
                 },
                 supportingText = {
-                    if (defaultHours > 0) {
-                        Text(
-                            "RAWG suggested value: $defaultHours h"
-                        )
-                    } else {
-                        Text("Enter 0 if you haven't played yet")
-                    }
+                    Text(
+                        text = if (defaultHours > 0) {
+                            "Suggested from RAWG: $defaultHours h"
+                        } else {
+                            "Enter 0 if you haven't played yet"
+                        },
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 },
                 isError = !isHoursValid,
                 singleLine = true,
@@ -392,13 +456,18 @@ private fun SaveGameDialog(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 TextButton(
                     onClick = onDismissRequest
                 ) {
                     Text("Cancel")
                 }
+
+                Spacer(
+                    modifier = Modifier.width(8.dp)
+                )
 
                 Button(
                     onClick = {
@@ -1517,3 +1586,28 @@ private fun DetailsErrorPreview() {
 //        )
 //    }
 //}
+@Preview(
+    name = "Save Game Dialog Dark",
+    showBackground = true,
+    backgroundColor = 0xFF0B0F1A,
+    widthDp = 390,
+    heightDp = 850
+)
+@Composable
+private fun SaveGameDialogDarkPreview() {
+    GameStTheme(
+        darkTheme = true
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            SaveGameDialog(
+                defaultHours = 24,
+                onDismissRequest = {},
+                onConfirm = { _, _, _ -> }
+            )
+        }
+    }
+}
