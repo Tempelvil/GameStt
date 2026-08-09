@@ -28,9 +28,6 @@ data class OfflineGame(
 }
 
 object OfflineGamesData {
-
-    // Genres
-
     val action = RawgGenreDto(4, "Action", "action")
 
     val rpg = RawgGenreDto(
@@ -119,7 +116,6 @@ object OfflineGamesData {
         slug = "ios"
     )
 
-    // ESRB
 
     private val everyone = RawgEsrbRatingDto(
         id = 1,

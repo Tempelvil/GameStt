@@ -102,4 +102,18 @@ class DefaultLocalGamesRepository(
             sort = sort.name
         )
     }
+    override suspend fun updatePersonalData(
+        gameId: Int,
+        status: GameStatus,
+        userRating: Int?,
+        hoursPlayed: Int
+    ) {
+        gameDao.updatePersonalData(
+            gameId = gameId,
+            status = status,
+            userRating = userRating,
+            hoursPlayed = hoursPlayed,
+            updatedAt = System.currentTimeMillis()
+        )
+    }
 }

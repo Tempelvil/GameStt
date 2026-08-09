@@ -11,6 +11,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -19,6 +20,8 @@ import androidx.navigation.compose.rememberNavController
 import com.example.gamest.model.GameFilter
 import com.example.gamest.ui.components.GameBottomBar
 import com.example.gamest.ui.components.GameTopBar
+import com.example.gamest.ui.screens.collection.CollectionScreen
+import com.example.gamest.ui.screens.collection.CollectionViewModel
 import com.example.gamest.ui.screens.details.DetailsScreen
 import com.example.gamest.ui.screens.details.GameDetailsViewModel
 import com.example.gamest.ui.screens.search.SearchScreen
@@ -35,7 +38,14 @@ fun GameShelfApp(
 
     val currentRoute = currentBackStackEntry?.destination?.route
 
+    val collectionViewModel: CollectionViewModel = viewModel(
+        factory = CollectionViewModel.Factory
+    )
+    val collectionUiState by collectionViewModel.uiState
+        .collectAsStateWithLifecycle()
+
     val isDetailScreen = currentRoute == GameDestination.DETAILS
+    val isSearchScreen = currentRoute== GameDestination.SEARCH
 
     val searchViewModel: SearchViewModel = viewModel(
         factory = SearchViewModel.Factory
@@ -43,7 +53,7 @@ fun GameShelfApp(
 
     Scaffold(
         topBar = {
-            if(!isDetailScreen){
+            if(isSearchScreen){
                 GameTopBar(
                     title = when(currentRoute){
                         GameDestination.COLLECTION ->"My Collection"
@@ -121,7 +131,40 @@ fun GameShelfApp(
                 )
             }
             composable(GameDestination.COLLECTION) {
-                Text("Collection screen")
+                CollectionScreen(
+                    uiState = collectionUiState,
+
+                    onFilterClick = { filter ->
+                        collectionViewModel.selectFilter(filter)
+                    },
+
+                    onSortClick = {
+                        // сделаем SortDialog следующим шагом
+                    },
+
+                    onSteamClick = {
+                        // Steam dialog позже
+                    },
+
+                    onOpenGame = { gameId ->
+                        navController.navigate(
+                            GameDestination.createDetailsRoute(gameId)
+                        )
+                    },
+
+                    onEditConfirm = { gameId, status, userRating, hoursPlayed ->
+                        collectionViewModel.updateGame(
+                            gameId = gameId,
+                            status = status,
+                            userRating = userRating,
+                            hoursPlayed = hoursPlayed
+                        )
+                    },
+
+                    onDeleteGame = { gameId ->
+                        // пока подключим удаление следующим шагом
+                    }
+                )
             }
 
             composable(GameDestination.STATISTICS) {

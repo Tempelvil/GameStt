@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.gamest.GameStApplication
+import com.example.gamest.data.local.GameStatus
 import com.example.gamest.data.repository.LocalGamesRepository
 import com.example.gamest.ui.screens.collections.CollectionFilter
 import com.example.gamest.ui.screens.collections.CollectionUiState
@@ -16,6 +17,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 class CollectionViewModel(
     private val localGamesRepository: LocalGamesRepository
@@ -78,6 +80,22 @@ class CollectionViewModel(
         sort: CollectionSort
     ) {
         selectedSort.value = sort
+    }
+
+    fun updateGame(
+        gameId: Int,
+        status: GameStatus,
+        userRating: Int?,
+        hoursPlayed: Int
+    ) {
+        viewModelScope.launch {
+            localGamesRepository.updatePersonalData(
+                gameId = gameId,
+                status = status,
+                userRating = userRating,
+                hoursPlayed = hoursPlayed
+            )
+        }
     }
 
     companion object {

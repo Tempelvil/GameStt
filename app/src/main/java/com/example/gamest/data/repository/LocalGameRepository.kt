@@ -59,4 +59,11 @@ interface LocalGamesRepository {
         status: GameStatus?,
         sort: GameSort
     ): Flow<List<GameEntity>>
+
+    suspend fun updatePersonalData(
+        gameId: Int,
+        status: GameStatus,
+        userRating: Int?,
+        hoursPlayed: Int
+    )
 }

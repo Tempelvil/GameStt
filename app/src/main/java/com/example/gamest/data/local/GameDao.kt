@@ -119,4 +119,22 @@ interface GameDao {
         status: GameStatus?,
         sort: String
     ): Flow<List<GameEntity>>
+
+    @Query(
+        """
+    UPDATE saved_games
+    SET status = :status,
+        userRating = :userRating,
+        hoursPlayed = :hoursPlayed,
+        updatedAt = :updatedAt
+    WHERE id = :gameId
+    """
+    )
+    suspend fun updatePersonalData(
+        gameId: Int,
+        status: GameStatus,
+        userRating: Int?,
+        hoursPlayed: Int,
+        updatedAt: Long
+    )
 }
