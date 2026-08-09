@@ -139,7 +139,7 @@ fun GameShelfApp(
                     },
 
                     onSortClick = {
-                        // сделаем SortDialog следующим шагом
+                        // SortDialog следующим шагом
                     },
 
                     onSteamClick = {
@@ -162,7 +162,7 @@ fun GameShelfApp(
                     },
 
                     onDeleteGame = { gameId ->
-                        // пока подключим удаление следующим шагом
+                        // следующим шагом
                     }
                 )
             }
