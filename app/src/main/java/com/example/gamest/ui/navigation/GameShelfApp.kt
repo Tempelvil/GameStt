@@ -138,8 +138,8 @@ fun GameShelfApp(
                         collectionViewModel.selectFilter(filter)
                     },
 
-                    onSortClick = {
-                        // SortDialog следующим шагом
+                    onSortClick = { sortType->
+                        collectionViewModel.selectSort(sortType)
                     },
 
                     onSteamClick = {
@@ -161,8 +161,8 @@ fun GameShelfApp(
                         )
                     },
 
-                    onDeleteGame = { gameId ->
-                        // следующим шагом
+                    onDeleteGame = {gameId ->
+                        collectionViewModel.deleteGame(gameId)
                     }
                 )
             }

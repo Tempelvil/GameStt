@@ -97,6 +97,17 @@ class CollectionViewModel(
             )
         }
     }
+    fun deleteGame(
+        gameId: Int
+    ) {
+        viewModelScope.launch {
+            val game =
+                localGamesRepository.getGameById(gameId)
+                    ?: return@launch
+
+            localGamesRepository.deleteGame(game)
+        }
+    }
 
     companion object {
         val Factory =

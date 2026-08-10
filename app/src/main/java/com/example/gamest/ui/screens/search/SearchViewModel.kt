@@ -165,6 +165,7 @@ class SearchViewModel(
         loadGames()
     }
 
+
     fun onSaveGameClick(gameId: Int) {
         uiState = uiState.copy(
             games = uiState.games.map { game ->

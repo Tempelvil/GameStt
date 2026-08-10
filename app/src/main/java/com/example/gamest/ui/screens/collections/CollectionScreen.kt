@@ -73,7 +73,10 @@ import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.border
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.ui.graphics.Color
@@ -84,7 +87,7 @@ import androidx.compose.ui.window.DialogProperties
 fun CollectionScreen(
     uiState: CollectionUiState,
     onFilterClick: (CollectionFilter) -> Unit,
-    onSortClick: () -> Unit,
+    onSortClick: (CollectionSort) -> Unit,
     onSteamClick: () -> Unit,
     onOpenGame: (Int) -> Unit,
     onEditConfirm: (Int,GameStatus,Int?,Int) -> Unit,
@@ -106,6 +109,13 @@ fun CollectionScreen(
         .firstOrNull { game ->
             game.id == editingGameId
         }
+    var deletingGameId by rememberSaveable {
+        mutableStateOf<Int?>(null)
+    }
+    val deletingGame = uiState.games.firstOrNull(){
+        game ->
+        game.id ==deletingGameId
+    }
 
     Column(
         modifier = modifier
@@ -231,6 +241,22 @@ fun CollectionScreen(
                     rating,
                     hours
                 )
+            }
+        )
+    }
+    if (deletingGame != null) {
+        DeleteGameDialog(
+            game = deletingGame,
+
+            onDismissRequest = {
+                deletingGameId = null
+            },
+
+            onConfirm = {
+                val gameId = deletingGame.id
+
+                deletingGameId = null
+                onDeleteGame(gameId)
             }
         )
     }
@@ -612,6 +638,45 @@ private fun CollectionGameActionsBottomSheet(
     }
 }
 @Composable
+private fun DeleteGameDialog(
+    game: GameEntity,
+    onDismissRequest: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+
+        title = {
+            Text("Remove game?")
+        },
+
+        text = {
+            Text(
+                text = "Remove \"${game.title}\" from your collection?"
+            )
+        },
+
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm
+            ) {
+                Text(
+                    text = "Remove",
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        },
+
+        dismissButton = {
+            TextButton(
+                onClick = onDismissRequest
+            ) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+@Composable
 private fun CollectionTopBar(
     onSteamClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -765,9 +830,13 @@ private fun CollectionFilterRow(
 private fun CollectionInfoRow(
     gameCount: Int,
     selectedSort: CollectionSort,
-    onSortClick: () -> Unit,
+    onSortClick: (CollectionSort) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var expanded by rememberSaveable {
+        mutableStateOf(false)
+    }
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -778,7 +847,7 @@ private fun CollectionInfoRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Surface(
-            onClick = onSortClick,
+            onClick = {expanded = true},
             shape = RoundedCornerShape(10.dp),
             color = MaterialTheme.colorScheme.surface,
             border = BorderStroke(
@@ -820,6 +889,27 @@ private fun CollectionInfoRow(
                 )
             }
         }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = {
+                expanded = false
+            }
+        ) {
+            CollectionSort.entries.forEach { sort ->
+
+                DropdownMenuItem(
+                    text = {
+                        Text(sort.title)
+                    },
+
+                    onClick = {
+                        onSortClick(sort)
+                        expanded = false
+                    }
+                )
+            }
+        }
+
 
         Spacer(
             modifier = Modifier.weight(1f)
