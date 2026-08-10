@@ -26,6 +26,8 @@ import com.example.gamest.ui.screens.details.DetailsScreen
 import com.example.gamest.ui.screens.details.GameDetailsViewModel
 import com.example.gamest.ui.screens.search.SearchScreen
 import com.example.gamest.ui.screens.search.SearchViewModel
+import com.example.gamest.ui.screens.statistics.StatisticsScreen
+import com.example.gamest.ui.screens.statistics.StatisticsViewModel
 
 @Composable
 fun GameShelfApp(
@@ -50,6 +52,12 @@ fun GameShelfApp(
     val searchViewModel: SearchViewModel = viewModel(
         factory = SearchViewModel.Factory
     )
+
+    val statisticsViewModel: StatisticsViewModel = viewModel(
+        factory = StatisticsViewModel.Factory
+    )
+    val statisticsUiState by statisticsViewModel.uiState
+        .collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -168,7 +176,15 @@ fun GameShelfApp(
             }
 
             composable(GameDestination.STATISTICS) {
-                Text("Statistics screen")
+                StatisticsScreen(
+                    uiState = statisticsUiState,
+                    onSectionClick = statisticsViewModel::selectSection,
+                    onGameClick = { gameId ->
+                        navController.navigate(
+                            GameDestination.createDetailsRoute(gameId)
+                        )
+                    }
+                )
             }
 
             composable(GameDestination.DETAILS) {

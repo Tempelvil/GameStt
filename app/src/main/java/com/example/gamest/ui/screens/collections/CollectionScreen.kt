@@ -215,10 +215,8 @@ fun CollectionScreen(
             },
 
             onDeleteClick = {
-                val gameId = selectedGame.id
-
+                deletingGameId = selectedGame.id
                 selectedGameId = null
-                onDeleteGame(gameId)
             }
         )
     }
