@@ -15,6 +15,7 @@ val localProperties = Properties().apply {
 }
 
 val rawgApiKey = localProperties.getProperty("RAWG_API_KEY") ?: ""
+val steamApiKey = localProperties.getProperty("STEAM_API_KEY") ?: ""
 
 android {
     namespace = "com.example.gamest"
@@ -38,6 +39,11 @@ android {
             "\"$rawgApiKey\""
 
         )
+        buildConfigField(
+             "String",
+             "STEAM_API_KEY",
+             "\"$steamApiKey\""
+        )
     }
 
     buildTypes {
@@ -57,6 +63,7 @@ android {
         compose = true
         buildConfig = true
     }
+
 
 }
 

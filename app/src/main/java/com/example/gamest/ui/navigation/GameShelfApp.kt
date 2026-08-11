@@ -28,6 +28,8 @@ import com.example.gamest.ui.screens.search.SearchScreen
 import com.example.gamest.ui.screens.search.SearchViewModel
 import com.example.gamest.ui.screens.statistics.StatisticsScreen
 import com.example.gamest.ui.screens.statistics.StatisticsViewModel
+import com.example.gamest.ui.screens.steam.SteamConnectionDialog
+import com.example.gamest.ui.screens.steam.SteamConnectionViewModel
 
 @Composable
 fun GameShelfApp(
@@ -58,6 +60,15 @@ fun GameShelfApp(
     )
     val statisticsUiState by statisticsViewModel.uiState
         .collectAsStateWithLifecycle()
+
+    val steamConnectionViewModel: SteamConnectionViewModel = viewModel(
+        factory = SteamConnectionViewModel.Factory
+    )
+    val steamConnectionUiState by steamConnectionViewModel.uiState
+        .collectAsStateWithLifecycle()
+    var showSteamConnectionDialog by rememberSaveable {
+        mutableStateOf(false)
+    }
 
     Scaffold(
         topBar = {
@@ -151,7 +162,7 @@ fun GameShelfApp(
                     },
 
                     onSteamClick = {
-                        // Steam dialog позже
+                        showSteamConnectionDialog = true
                     },
 
                     onOpenGame = { gameId ->
@@ -173,6 +184,20 @@ fun GameShelfApp(
                         collectionViewModel.deleteGame(gameId)
                     }
                 )
+
+                if (showSteamConnectionDialog) {
+                    SteamConnectionDialog(
+                        uiState = steamConnectionUiState,
+                        onProfileUrlChange =
+                            steamConnectionViewModel::onProfileUrlChange,
+                        onCheckConnection =
+                            steamConnectionViewModel::checkConnection,
+                        onDismissRequest = {
+                            showSteamConnectionDialog = false
+                            steamConnectionViewModel.reset()
+                        }
+                    )
+                }
             }
 
             composable(GameDestination.STATISTICS) {

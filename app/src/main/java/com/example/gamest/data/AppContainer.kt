@@ -5,9 +5,12 @@ import com.example.gamest.BuildConfig
 import com.example.gamest.data.local.GameDao
 import com.example.gamest.data.local.GameDatabase
 import com.example.gamest.data.network.RawgApiService
+import com.example.gamest.data.network.steam.SteamApiService
 import com.example.gamest.data.repository.DefaultLocalGamesRepository
+import com.example.gamest.data.repository.DefaultSteamRepository
 import com.example.gamest.data.repository.GamesRepository
 import com.example.gamest.data.repository.LocalGamesRepository
+import com.example.gamest.data.repository.SteamRepository
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
@@ -20,6 +23,7 @@ import com.example.gamest.data.offline.OfflineRawgApiService
 interface AppContainer {
     val gamesRepository: GamesRepository
     val localGamesRepository: LocalGamesRepository
+    val steamRepository: SteamRepository
 }
 
 
@@ -60,6 +64,14 @@ class DefaultAppContainer(
         )
         .build()
 
+    private val steamRetrofit = Retrofit.Builder()
+        .baseUrl("https://api.steampowered.com/")
+        .client(okHttpClient)
+        .addConverterFactory(
+            json.asConverterFactory("application/json".toMediaType())
+        )
+        .build()
+
     private val rawgApiService: RawgApiService by lazy {
 
         if (OfflineMode.enabled) {
@@ -74,6 +86,17 @@ class DefaultAppContainer(
         GamesRepository(
             apiService = rawgApiService,
             apiKey = BuildConfig.RAWG_API_KEY
+        )
+    }
+
+    private val steamApiService: SteamApiService by lazy {
+        steamRetrofit.create(SteamApiService::class.java)
+    }
+
+    override val steamRepository: SteamRepository by lazy {
+        DefaultSteamRepository(
+            apiService = steamApiService,
+            apiKey = BuildConfig.STEAM_API_KEY
         )
     }
 }
