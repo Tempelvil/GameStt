@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
@@ -40,7 +42,10 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.gamest.R
 import com.example.gamest.ui.theme.GameStTheme
+import coil.compose.AsyncImage
 import java.util.Locale
+import java.text.DateFormat
+import java.util.Date
 
 @Composable
 fun SteamConnectionDialog(
@@ -86,10 +91,11 @@ fun SteamConnectionDialog(
                     closeEnabled = !uiState.isLoading,
                     onCloseClick = onDismissRequest
                 )
-                if (uiState.isConnected) {
+                if (uiState.isConnected && !uiState.isAddingProfile) {
 
                     SteamConnectedContent(
                         uiState = uiState,
+                        onRefresh = onCheckConnection,
                         onDisconnect = onDisconnect
                     )
 
@@ -103,70 +109,6 @@ fun SteamConnectionDialog(
                     )
                 }
 
-                /*Spacer(modifier = Modifier.height(18.dp))
-
-                Text(
-                    text = "Paste the link from your Steam profile. Your Game details must be public.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                OutlinedTextField(
-                    value = uiState.profileUrl,
-                    onValueChange = onProfileUrlChange,
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !uiState.isLoading,
-                    label = {
-                        Text("Steam profile link")
-                    },
-                    placeholder = {
-                        Text("https://steamcommunity.com/id/username/")
-                    },
-                    supportingText = {
-                        Text("Only steamcommunity.com profile links are accepted")
-                    },
-                    isError = uiState.errorMessage != null,
-                    singleLine = true
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Button(
-                    onClick = onCheckConnection,
-                    enabled = !uiState.isLoading &&
-                            uiState.profileUrl.isNotBlank(),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    if (uiState.isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-
-                        Spacer(modifier = Modifier.width(10.dp))
-                    }
-
-                    Text(
-                        if (uiState.result == null) {
-                            "Check connection"
-                        } else {
-                            "Refresh"
-                        }
-                    )
-                }
-
-                uiState.errorMessage?.let { message ->
-                    Spacer(modifier = Modifier.height(16.dp))
-                    SteamErrorContent(message)
-                }
-
-                uiState.result?.let { result ->
-                    Spacer(modifier = Modifier.height(18.dp))
-                    SteamConnectionResultContent(result)
-                }*/
             }
         }
     }
@@ -259,6 +201,7 @@ private fun SteamNotConnectedContent(
 @Composable
 private fun SteamConnectedContent(
     uiState: SteamConnectionUiState,
+    onRefresh: () -> Unit,
     onDisconnect: () -> Unit
 ) {
     Column {
@@ -276,7 +219,7 @@ private fun SteamConnectedContent(
 
             Spacer(modifier = Modifier.width(10.dp))
 
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Steam connected",
                     style = MaterialTheme.typography.titleMedium,
@@ -284,7 +227,9 @@ private fun SteamConnectedContent(
                 )
 
                 Text(
-                    text = "Your Steam profile is saved",
+                    text = uiState.lastSyncAt?.let { timestamp ->
+                        "Last synced ${timestamp.formatSyncTime()}"
+                    } ?: "Your Steam profile is saved",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -293,19 +238,45 @@ private fun SteamConnectedContent(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        uiState.connectedSteamId?.let { steamId ->
+        SteamProfileSummary(
+            personaName = uiState.result?.personaName
+                ?: uiState.connectedPersonaName
+                ?: "Steam user",
+            avatarUrl = uiState.result?.avatarUrl
+                ?: uiState.connectedAvatarUrl,
+            steamId = uiState.connectedSteamId.orEmpty()
+        )
 
-            SteamResultMetric(
-                title = "Steam ID",
-                value = steamId,
-                modifier = Modifier.fillMaxWidth()
-            )
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Button(
+            onClick = onRefresh,
+            enabled = !uiState.isLoading,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            if (uiState.isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+            }
+            Text("Sync now")
+        }
+
+        uiState.errorMessage?.let { message ->
+            Spacer(modifier = Modifier.height(12.dp))
+            SteamErrorContent(message)
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
         uiState.result?.let { result ->
-            SteamConnectionResultContent(result)
+            SteamConnectionResultContent(
+                result = result,
+                showProfile = false
+            )
         }
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -401,28 +372,27 @@ private fun SteamErrorContent(message: String) {
 
 @Composable
 private fun SteamConnectionResultContent(
-    result: SteamConnectionResultUiModel
+    result: SteamConnectionResultUiModel,
+    showProfile: Boolean = true
 ) {
     Column {
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.CheckCircle,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
-            )
-
-            Spacer(modifier = Modifier.width(8.dp))
-
+        if (showProfile) {
             Text(
-                text = "Steam connected",
+                text = "Profile found",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
-        }
 
-        Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
+
+            SteamProfileSummary(
+                personaName = result.personaName,
+                avatarUrl = result.avatarUrl,
+                steamId = result.steamId
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+        }
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -481,6 +451,48 @@ private fun SteamConnectionResultContent(
 
                 SteamGameResultRow(game)
             }
+        }
+    }
+}
+
+@Composable
+private fun SteamProfileSummary(
+    personaName: String,
+    avatarUrl: String?,
+    steamId: String
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        AsyncImage(
+            model = avatarUrl,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            placeholder = painterResource(R.drawable.steam_svgrepo_com),
+            error = painterResource(R.drawable.steam_svgrepo_com),
+            modifier = Modifier
+                .size(56.dp)
+                .clip(RoundedCornerShape(14.dp))
+        )
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = personaName,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = steamId,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
@@ -591,6 +603,13 @@ private fun Long.formatPlaytime(): String {
     }
 }
 
+private fun Long.formatSyncTime(): String {
+    return DateFormat.getDateTimeInstance(
+        DateFormat.MEDIUM,
+        DateFormat.SHORT
+    ).format(Date(this))
+}
+
 @Preview(
     name = "Steam connection",
     showBackground = true,
@@ -615,6 +634,10 @@ private val previewSteamConnectionState = SteamConnectionUiState(
     profileUrl = "https://steamcommunity.com/id/username/",
     result = SteamConnectionResultUiModel(
         steamId = "76561190000000000",
+        personaName = "Steam player",
+        avatarUrl = null,
+        canonicalProfileUrl =
+            "https://steamcommunity.com/profiles/76561190000000000/",
         ownedGamesCount = 124,
         totalPlaytimeMinutes = 147_600,
         recentlyPlayedCount = 3,

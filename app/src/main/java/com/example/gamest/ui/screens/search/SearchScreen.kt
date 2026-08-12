@@ -4,7 +4,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,7 +23,6 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.items as lazyColumnItems
 import androidx.compose.material.icons.Icons
@@ -35,12 +33,10 @@ import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -73,6 +69,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.draw.clip
+import com.example.gamest.ui.components.PlatformIcons
+import com.example.gamest.ui.components.CompactFilterBar
 
 
 @Composable
@@ -463,12 +461,8 @@ fun GameCard(
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "${game.genres.firstOrNull() ?: "Unknown"} • ${game.platforms.firstOrNull() ?: "Unknown"}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                    GameGenreAndPlatforms(
+                        game = game,
                         modifier = Modifier.weight(1f)
                     )
 
@@ -482,7 +476,11 @@ fun GameCard(
                             } else {
                                 Icons.Default.BookmarkBorder
                             },
-                            contentDescription = "Save game",
+                            contentDescription = if (game.isSaved) {
+                                "Game is in collection"
+                            } else {
+                                "Open game to add to collection"
+                            },
                             tint = if (game.isSaved) {
                                 MaterialTheme.colorScheme.primary
                             } else {
@@ -496,6 +494,34 @@ fun GameCard(
         }
     }
 }
+
+@Composable
+private fun GameGenreAndPlatforms(
+    game: GameUiModel,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = game.genres.firstOrNull() ?: "Unknown",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false)
+        )
+
+        if (game.platforms.isNotEmpty()) {
+            PlatformIcons(
+                platforms = game.platforms,
+                showLeadingSeparator = true
+            )
+        }
+    }
+}
+
 @Composable
 fun SearchTextField(
     query: String,
@@ -526,44 +552,28 @@ fun GenreChipsRow(
     onGenreClick: (GameFilter) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = modifier.horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        listOf(
-            GameFilter.TopRated,
-            GameFilter.Rpg,
-            GameFilter.Action,
-            GameFilter.Pc
-        ).forEach { filter ->
-            FilterChip(
-                selected = selectedGenre == filter,
-                onClick = { onGenreClick(filter) },
-                label = { Text(filter.title) },
-                leadingIcon = if (selectedGenre == filter) {
-                    {
-                        Icon(
-                            imageVector = Icons.Default.Star,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                } else {
-                    null
-                }
-            )
-        }
+    val quickFilters = listOf(
+        GameFilter.TopRated,
+        GameFilter.Rpg,
+        GameFilter.Action,
+        GameFilter.Pc
+    )
 
-        AssistChip(
-            onClick = onMoreGenreClick,
-            label = {
-                Icon(
-                    imageVector = Icons.Default.MoreHoriz,
-                    contentDescription = "More filters"
-                )
+    CompactFilterBar(
+        items = quickFilters,
+        selectedItem = selectedGenre,
+        onItemClick = onGenreClick,
+        label = { filter ->
+            if (filter == GameFilter.TopRated) "Top" else filter.title
+        },
+        icon = { filter ->
+            Icons.Default.Star.takeIf {
+                filter == GameFilter.TopRated
             }
-        )
-    }
+        },
+        onMoreClick = onMoreGenreClick,
+        modifier = modifier
+    )
 }
 
 @Preview(showBackground = true)

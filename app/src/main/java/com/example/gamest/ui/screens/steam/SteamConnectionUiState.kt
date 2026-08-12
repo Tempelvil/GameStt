@@ -8,11 +8,17 @@ data class SteamConnectionUiState(
 
     val isConnected: Boolean = false,
     val connectedSteamId: String? = null,
-    val lastSyncAt: Long? = null
+    val connectedPersonaName: String? = null,
+    val connectedAvatarUrl: String? = null,
+    val lastSyncAt: Long? = null,
+    val isAddingProfile: Boolean = false
 )
 
 data class SteamConnectionResultUiModel(
     val steamId: String,
+    val personaName: String,
+    val avatarUrl: String?,
+    val canonicalProfileUrl: String,
     val ownedGamesCount: Int,
     val totalPlaytimeMinutes: Long,
     val recentlyPlayedCount: Int,

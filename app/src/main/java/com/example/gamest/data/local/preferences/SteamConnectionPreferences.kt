@@ -1,7 +1,6 @@
 package com.example.gamest.data.local.preferences
 
 import android.content.Context
-import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
@@ -18,6 +17,8 @@ data class SteamConnectionData(
     val isConnected: Boolean = false,
     val profileUrl: String = "",
     val steamId: String = "",
+    val personaName: String = "",
+    val avatarUrl: String = "",
     val lastSyncAt: Long? = null
 )
 
@@ -35,6 +36,12 @@ class SteamConnectionPreferences(
         val STEAM_ID =
             stringPreferencesKey("steam_id")
 
+        val PERSONA_NAME =
+            stringPreferencesKey("steam_persona_name")
+
+        val AVATAR_URL =
+            stringPreferencesKey("steam_avatar_url")
+
         val LAST_SYNC_AT =
             longPreferencesKey("steam_last_sync_at")
     }
@@ -51,6 +58,12 @@ class SteamConnectionPreferences(
                 steamId =
                     preferences[Keys.STEAM_ID] ?: "",
 
+                personaName =
+                    preferences[Keys.PERSONA_NAME] ?: "",
+
+                avatarUrl =
+                    preferences[Keys.AVATAR_URL] ?: "",
+
                 lastSyncAt =
                     preferences[Keys.LAST_SYNC_AT]
             )
@@ -58,21 +71,37 @@ class SteamConnectionPreferences(
 
     suspend fun saveConnection(
         profileUrl: String,
-        steamId: String
+        steamId: String,
+        personaName: String,
+        avatarUrl: String?
+    ) {
+        selectProfile(
+            profileUrl = profileUrl,
+            steamId = steamId,
+            personaName = personaName,
+            avatarUrl = avatarUrl,
+            lastSyncAt = System.currentTimeMillis()
+        )
+    }
+
+    suspend fun selectProfile(
+        profileUrl: String,
+        steamId: String,
+        personaName: String,
+        avatarUrl: String?,
+        lastSyncAt: Long?
     ) {
         context.steamDataStore.edit { preferences ->
             preferences[Keys.IS_CONNECTED] = true
             preferences[Keys.PROFILE_URL] = profileUrl
             preferences[Keys.STEAM_ID] = steamId
-            preferences[Keys.LAST_SYNC_AT] =
-                System.currentTimeMillis()
-        }
-    }
-
-    suspend fun updateLastSync() {
-        context.steamDataStore.edit { preferences ->
-            preferences[Keys.LAST_SYNC_AT] =
-                System.currentTimeMillis()
+            preferences[Keys.PERSONA_NAME] = personaName
+            preferences[Keys.AVATAR_URL] = avatarUrl.orEmpty()
+            if (lastSyncAt != null) {
+                preferences[Keys.LAST_SYNC_AT] = lastSyncAt
+            } else {
+                preferences.remove(Keys.LAST_SYNC_AT)
+            }
         }
     }
 
@@ -81,6 +110,8 @@ class SteamConnectionPreferences(
             preferences.remove(Keys.IS_CONNECTED)
             preferences.remove(Keys.PROFILE_URL)
             preferences.remove(Keys.STEAM_ID)
+            preferences.remove(Keys.PERSONA_NAME)
+            preferences.remove(Keys.AVATAR_URL)
             preferences.remove(Keys.LAST_SYNC_AT)
         }
     }

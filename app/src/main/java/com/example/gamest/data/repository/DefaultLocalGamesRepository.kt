@@ -5,6 +5,7 @@ import com.example.gamest.data.local.GameEntity
 import com.example.gamest.data.local.GameSort
 import com.example.gamest.data.local.GameStatus
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 class DefaultLocalGamesRepository(
     private val gameDao: GameDao
@@ -30,6 +31,11 @@ class DefaultLocalGamesRepository(
         gameId: Int
     ): Flow<Boolean> {
         return gameDao.observeIsGameSaved(gameId)
+    }
+
+    override fun observeSavedGameIds(): Flow<Set<Int>> {
+        return gameDao.observeSavedGameIds()
+            .map(List<Int>::toSet)
     }
 
     override suspend fun getGameById(

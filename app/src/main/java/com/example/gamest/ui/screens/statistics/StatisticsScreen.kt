@@ -26,9 +26,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -64,6 +67,8 @@ import kotlin.math.roundToInt
 fun StatisticsScreen(
     uiState: StatisticsUiState,
     onSectionClick: (StatisticsSection) -> Unit,
+    onSteamPeriodClick: (SteamStatisticsPeriod) -> Unit,
+    onSteamProfileClick: (String) -> Unit,
     onGameClick: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -136,6 +141,16 @@ fun StatisticsScreen(
                             )
                     }
                 }
+            }
+        }
+
+        if (uiState.steamStatistics.isAvailable) {
+            item {
+                SteamStatisticsContent(
+                    statistics = uiState.steamStatistics,
+                    onPeriodClick = onSteamPeriodClick,
+                    onProfileClick = onSteamProfileClick
+                )
             }
         }
     }
@@ -848,6 +863,249 @@ private fun StatusLegendRow(
 }
 
 @Composable
+private fun SteamStatisticsContent(
+    statistics: SteamStatisticsUiModel,
+    onPeriodClick: (SteamStatisticsPeriod) -> Unit,
+    onProfileClick: (String) -> Unit
+) {
+    var profilesExpanded by remember { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        StatisticsSectionCard(title = "Steam activity") {
+            Box {
+                Surface(
+                    onClick = {
+                        profilesExpanded = statistics.profiles.size > 1
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        AsyncImage(
+                            model = statistics.avatarUrl,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                statistics.personaName,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                "${statistics.totalMinutes.toHoursText()} total",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        if (statistics.profiles.size > 1) {
+                            Icon(
+                                Icons.Default.ArrowDropDown,
+                                contentDescription = "Choose Steam profile"
+                            )
+                        }
+                    }
+                }
+                DropdownMenu(
+                    expanded = profilesExpanded,
+                    onDismissRequest = { profilesExpanded = false }
+                ) {
+                    statistics.profiles.forEach { profile ->
+                        DropdownMenuItem(
+                            text = {
+                                Column {
+                                    Text(profile.personaName)
+                                    Text(
+                                        profile.status.lowercase()
+                                            .replaceFirstChar { it.uppercase() },
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
+                            },
+                            onClick = {
+                                onProfileClick(profile.steamId)
+                                profilesExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(14.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                SteamStatisticsPeriod.entries.forEach { period ->
+                    val selected = statistics.selectedPeriod == period
+                    Surface(
+                        onClick = { onPeriodClick(period) },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (selected) {
+                            MaterialTheme.colorScheme.primaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.surfaceVariant
+                        },
+                        border = BorderStroke(
+                            1.dp,
+                            if (selected) MaterialTheme.colorScheme.primary
+                            else Color.Transparent
+                        )
+                    ) {
+                        Text(
+                            period.title,
+                            modifier = Modifier.padding(vertical = 8.dp),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (selected) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Bottom
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        "Playtime over ${statistics.selectedPeriod.title.lowercase()}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        statistics.periodMinutes.toHoursText(),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Text(
+                    "Recorded from sync changes",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+            SteamActivityChart(statistics.activity)
+
+            if (statistics.untrackedMinutes > 0) {
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    "${statistics.untrackedMinutes.toHoursText()} occurred while " +
+                        "tracking was paused and is excluded from the chart.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        StatisticsSectionCard(
+            title = "Last 2 Weeks",
+            subtitle = if (statistics.recentGames.isEmpty()) {
+                "Steam reports no recent playtime"
+            } else {
+                "${statistics.recentTwoWeeksMinutes.toHoursText()} across " +
+                    "${statistics.recentGames.size} games"
+            }
+        ) {
+            statistics.recentGames.take(5).forEachIndexed { index, game ->
+                if (index > 0) HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 8.dp),
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    AsyncImage(
+                        model = game.imageUrl,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(width = 76.dp, height = 42.dp)
+                            .clip(RoundedCornerShape(7.dp))
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        game.name,
+                        modifier = Modifier.weight(1f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        game.recentMinutes.toHoursText(),
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SteamActivityChart(points: List<SteamActivityPointUiModel>) {
+    val accent = Color(0xFF00D8E8)
+    val grid = MaterialTheme.colorScheme.outline.copy(alpha = 0.14f)
+    val maximum = points.maxOfOrNull { it.minutes }?.coerceAtLeast(1) ?: 1
+    Canvas(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(150.dp)
+    ) {
+        repeat(4) { row ->
+            val y = size.height * row / 3f
+            drawLine(grid, Offset(0f, y), Offset(size.width, y), 1.dp.toPx())
+        }
+        if (points.isEmpty()) return@Canvas
+        val step = if (points.size == 1) 0f else size.width / (points.size - 1)
+        val chartPoints = points.mapIndexed { index, point ->
+            Offset(
+                x = step * index,
+                y = size.height - (point.minutes.toFloat() / maximum) *
+                    (size.height - 6.dp.toPx())
+            )
+        }
+        chartPoints.zipWithNext().forEach { (start, end) ->
+            drawLine(accent, start, end, 3.dp.toPx(), StrokeCap.Round)
+        }
+        chartPoints.forEach { point -> drawCircle(accent, 3.dp.toPx(), point) }
+    }
+    if (points.isNotEmpty()) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            listOf(points.first(), points[points.lastIndex / 2], points.last())
+                .forEach { point ->
+                    Text(
+                        point.label,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+        }
+    }
+}
+
+private fun Long.toHoursText(): String {
+    val hours = this / 60
+    val minutes = this % 60
+    return when {
+        hours == 0L -> "${minutes}m"
+        minutes == 0L -> "${hours}h"
+        else -> "${hours}h ${minutes}m"
+    }
+}
+
+@Composable
 private fun StatisticsLoadingContent() {
     Box(
         modifier = Modifier
@@ -958,6 +1216,14 @@ private fun StatisticsPreviewHost() {
                 selectedSection = section
             )
         },
+        onSteamPeriodClick = { period ->
+            previewState = previewState.copy(
+                steamStatistics = previewState.steamStatistics.copy(
+                    selectedPeriod = period
+                )
+            )
+        },
+        onSteamProfileClick = {},
         onGameClick = {}
     )
 }

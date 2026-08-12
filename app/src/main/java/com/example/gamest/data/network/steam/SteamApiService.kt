@@ -5,6 +5,13 @@ import retrofit2.http.Query
 
 interface SteamApiService {
 
+    @GET("ISteamUser/GetPlayerSummaries/v0002/")
+    suspend fun getPlayerSummaries(
+        @Query("key") apiKey: String,
+        @Query("steamids") steamIds: String,
+        @Query("format") format: String = "json"
+    ): SteamPlayerSummariesResponseDto
+
     @GET("IPlayerService/GetOwnedGames/v0001/")
     suspend fun getOwnedGames(
         @Query("key") apiKey: String,

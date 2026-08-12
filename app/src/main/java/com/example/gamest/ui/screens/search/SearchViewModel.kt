@@ -1,6 +1,5 @@
 package com.example.gamest.ui.screens.search
 
-import android.adservices.adid.AdId
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -12,6 +11,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.gamest.GameStApplication
 import com.example.gamest.data.repository.GamesRepository
+import com.example.gamest.data.repository.LocalGamesRepository
 import com.example.gamest.model.GameFilter
 import com.example.gamest.model.GameUiModel
 import kotlinx.coroutines.Job
@@ -19,14 +19,29 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class SearchViewModel(
-    private val repository: GamesRepository
+    private val repository: GamesRepository,
+    private val localGamesRepository: LocalGamesRepository
 ): ViewModel() {
 
 
     var uiState by mutableStateOf(SearchUiState())
         private set
-    init{
+    private var savedGameIds: Set<Int> = emptySet()
+
+    init {
+        observeSavedGames()
         loadGames()
+    }
+
+    private fun observeSavedGames() {
+        viewModelScope.launch {
+            localGamesRepository.observeSavedGameIds().collect { ids ->
+                savedGameIds = ids
+                uiState = uiState.copy(
+                    games = uiState.games.withSavedState(ids)
+                )
+            }
+        }
     }
 
     private var searchJob: Job?=null
@@ -79,7 +94,7 @@ class SearchViewModel(
                 )
 
                 uiState = uiState.copy(
-                    games = games,
+                    games = games.withSavedState(savedGameIds),
                     isLoading = false,
                     page = 1,
                     canLoadMore = games.isNotEmpty()
@@ -116,7 +131,10 @@ class SearchViewModel(
                 )
 
                 uiState = uiState.copy(
-                    games = uiState.games + newGames,
+                    games = (
+                        uiState.games +
+                            newGames.withSavedState(savedGameIds)
+                        ),
                     isLoadingMore = false,
                     page = nextPage,
                     canLoadMore = newGames.isNotEmpty()
@@ -166,18 +184,6 @@ class SearchViewModel(
     }
 
 
-    fun onSaveGameClick(gameId: Int) {
-        uiState = uiState.copy(
-            games = uiState.games.map { game ->
-                if (game.id == gameId) {
-                    game.copy(isSaved = !game.isSaved)
-                } else {
-                    game
-                }
-            }
-        )
-    }
-
     companion object{
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
@@ -185,9 +191,21 @@ class SearchViewModel(
 
                 val repository = application.container.gamesRepository
 
-                SearchViewModel(repository = repository)
+                SearchViewModel(
+                    repository = repository,
+                    localGamesRepository =
+                        application.container.localGamesRepository
+                )
             }
         }
     }
 
+}
+
+private fun List<GameUiModel>.withSavedState(
+    savedGameIds: Set<Int>
+): List<GameUiModel> {
+    return map { game ->
+        game.copy(isSaved = game.id in savedGameIds)
+    }
 }

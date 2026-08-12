@@ -18,6 +18,8 @@ interface LocalGamesRepository {
         gameId: Int
     ): Flow<Boolean>
 
+    fun observeSavedGameIds(): Flow<Set<Int>>
+
     fun observeGameById(
         gameId: Int
     ): Flow<GameEntity?>

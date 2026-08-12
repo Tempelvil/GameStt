@@ -21,6 +21,9 @@ interface GameDao {
     @Query("SELECT EXISTS(SELECT 1 FROM saved_games WHERE id = :gameId)")
     fun observeIsGameSaved(gameId: Int): Flow<Boolean>
 
+    @Query("SELECT id FROM saved_games")
+    fun observeSavedGameIds(): Flow<List<Int>>
+
     @Query("SELECT * FROM saved_games WHERE id = :gameId LIMIT 1")
     fun observeGameById(gameId: Int): Flow<GameEntity?>
 

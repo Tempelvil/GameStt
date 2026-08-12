@@ -18,6 +18,8 @@ data class StatisticsUiState(
     val genrePlaytime: List<GenrePlaytimeUiModel> = emptyList(),
     val favoriteGenreGames: List<StatisticGameUiModel> = emptyList(),
 
+    val steamStatistics: SteamStatisticsUiModel = SteamStatisticsUiModel(),
+
     val selectedSection: StatisticsSection =
         StatisticsSection.PLAYED_GAMES,
 

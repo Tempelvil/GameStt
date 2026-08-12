@@ -30,6 +30,8 @@ import com.example.gamest.ui.screens.statistics.StatisticsScreen
 import com.example.gamest.ui.screens.statistics.StatisticsViewModel
 import com.example.gamest.ui.screens.steam.SteamConnectionDialog
 import com.example.gamest.ui.screens.steam.SteamConnectionViewModel
+import com.example.gamest.ui.screens.steam.library.SteamLibraryScreen
+import com.example.gamest.ui.screens.steam.library.SteamLibraryViewModel
 
 @Composable
 fun GameShelfApp(
@@ -48,7 +50,9 @@ fun GameShelfApp(
     val collectionUiState by collectionViewModel.uiState
         .collectAsStateWithLifecycle()
 
-    val isDetailScreen = currentRoute == GameDestination.DETAILS
+    val isSecondaryScreen =
+        currentRoute == GameDestination.DETAILS ||
+            currentRoute == GameDestination.STEAM_LIBRARY
     val isSearchScreen = currentRoute== GameDestination.SEARCH
 
     val searchViewModel: SearchViewModel = viewModel(
@@ -86,7 +90,7 @@ fun GameShelfApp(
             }
         },
         bottomBar = {
-            if(!isDetailScreen) {
+            if(!isSecondaryScreen) {
                 GameBottomBar(
                     selectedRoute = currentRoute ?: GameDestination.SEARCH,
                     onItemClick = { route ->
@@ -113,7 +117,9 @@ fun GameShelfApp(
                     },
 
                     onSaveGameClick = {
-                        searchViewModel.onSaveGameClick(it)
+                        navController.navigate(
+                            GameDestination.createDetailsRoute(it)
+                        )
                     },
 
                     onGenreClick = { filter ->
@@ -162,7 +168,13 @@ fun GameShelfApp(
                     },
 
                     onSteamClick = {
-                        showSteamConnectionDialog = true
+                        if (steamConnectionUiState.isConnected) {
+                            navController.navigate(
+                                GameDestination.STEAM_LIBRARY
+                            )
+                        } else {
+                            showSteamConnectionDialog = true
+                        }
                     },
 
                     onOpenGame = { gameId ->
@@ -199,7 +211,12 @@ fun GameShelfApp(
                             steamConnectionViewModel.reset()
                         },
                         onConnect = {
-                            steamConnectionViewModel.connectProfile()
+                            steamConnectionViewModel.connectProfile {
+                                showSteamConnectionDialog = false
+                                navController.navigate(
+                                    GameDestination.STEAM_LIBRARY
+                                )
+                            }
                         },
                         onDisconnect = {
                             steamConnectionViewModel.disconnectProfile()
@@ -212,10 +229,53 @@ fun GameShelfApp(
                 StatisticsScreen(
                     uiState = statisticsUiState,
                     onSectionClick = statisticsViewModel::selectSection,
+                    onSteamPeriodClick =
+                        statisticsViewModel::selectSteamPeriod,
+                    onSteamProfileClick =
+                        statisticsViewModel::selectSteamProfile,
                     onGameClick = { gameId ->
                         navController.navigate(
                             GameDestination.createDetailsRoute(gameId)
                         )
+                    }
+                )
+            }
+
+            composable(GameDestination.STEAM_LIBRARY) {
+                val steamLibraryViewModel: SteamLibraryViewModel = viewModel(
+                    factory = SteamLibraryViewModel.Factory
+                )
+                val steamLibraryUiState by steamLibraryViewModel.uiState
+                    .collectAsStateWithLifecycle()
+
+                SteamLibraryScreen(
+                    uiState = steamLibraryUiState,
+                    onBackClick = { navController.popBackStack() },
+                    onSearchQueryChange =
+                        steamLibraryViewModel::onSearchQueryChange,
+                    onFilterClick = steamLibraryViewModel::selectFilter,
+                    onSortClick = steamLibraryViewModel::selectSort,
+                    onSyncClick = steamLibraryViewModel::sync,
+                    onAddProfileClick = {
+                        steamConnectionViewModel.beginAddingProfile()
+                        showSteamConnectionDialog = true
+                        navController.popBackStack()
+                    },
+                    onActivateProfile =
+                        steamLibraryViewModel::activateProfile,
+                    onPauseProfile =
+                        steamLibraryViewModel::pauseActiveProfile,
+                    onUnlinkProfile = { onComplete ->
+                        steamLibraryViewModel.unlinkActiveProfile(onComplete)
+                    },
+                    onDeleteProfile = { profile, onComplete ->
+                        steamLibraryViewModel.deleteProfileData(
+                            profile,
+                            onComplete
+                        )
+                    },
+                    onProfileDetached = {
+                        navController.popBackStack()
                     }
                 )
             }

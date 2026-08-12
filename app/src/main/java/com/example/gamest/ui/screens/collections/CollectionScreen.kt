@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -32,8 +31,6 @@ import androidx.compose.material.icons.filled.StarOutline
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -67,6 +64,8 @@ import com.example.gamest.data.local.StoredTag
 import com.example.gamest.ui.screens.collections.CollectionFilter
 import com.example.gamest.ui.screens.collections.CollectionUiState
 import com.example.gamest.ui.theme.GameStTheme
+import com.example.gamest.ui.components.PlatformIcons
+import com.example.gamest.ui.components.CompactFilterBar
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.OpenInNew
@@ -740,89 +739,22 @@ private fun CollectionFilterRow(
     onFilterClick: (CollectionFilter) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    LazyRow(
-        modifier = modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(
-            horizontal = 16.dp
-        ),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        items(
-            count = CollectionFilter.entries.size
-        ) { index ->
-
-            val filter =
-                CollectionFilter.entries[index]
-
-            val selected =
-                filter == selectedFilter
-
-            AssistChip(
-                onClick = {
-                    onFilterClick(filter)
-                },
-                label = {
-                    Text(
-                        text = filter.title
-                    )
-                },
-                leadingIcon = {
-                    Icon(
-                        imageVector = when (filter) {
-                            CollectionFilter.ALL ->
-                                Icons.Default.GridView
-
-                            CollectionFilter.PLANNED ->
-                                Icons.Outlined.BookmarkBorder
-
-                            CollectionFilter.PLAYING ->
-                                Icons.Default.PlayArrow
-
-                            CollectionFilter.COMPLETED ->
-                                Icons.Outlined.CheckCircle
-
-                            CollectionFilter.DROPPED ->
-                                Icons.Outlined.Cancel
-                        },
-                        contentDescription = null,
-                        modifier = Modifier.size(17.dp)
-                    )
-                },
-                colors = AssistChipDefaults.assistChipColors(
-                    containerColor =
-                        if (selected) {
-                            MaterialTheme.colorScheme.primaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.surface
-                        },
-
-                    labelColor =
-                        if (selected) {
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.onSurface
-                        },
-
-                    leadingIconContentColor =
-                        if (selected) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        }
-                ),
-                border = AssistChipDefaults.assistChipBorder(
-                    enabled = true,
-                    borderColor =
-                        if (selected) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.outline
-                                .copy(alpha = 0.45f)
-                        }
-                )
-            )
-        }
-    }
+    CompactFilterBar(
+        items = CollectionFilter.entries,
+        selectedItem = selectedFilter,
+        onItemClick = onFilterClick,
+        label = CollectionFilter::title,
+        icon = { filter ->
+            when (filter) {
+                CollectionFilter.ALL -> Icons.Default.GridView
+                CollectionFilter.PLANNED -> Icons.Outlined.BookmarkBorder
+                CollectionFilter.PLAYING -> Icons.Default.PlayArrow
+                CollectionFilter.COMPLETED -> Icons.Outlined.CheckCircle
+                CollectionFilter.DROPPED -> Icons.Outlined.Cancel
+            }
+        },
+        modifier = modifier.padding(horizontal = 16.dp)
+    )
 }
 @Composable
 private fun CollectionInfoRow(
@@ -982,13 +914,24 @@ private fun CollectionGameCard(
                     overflow = TextOverflow.Ellipsis
                 )
 
-                Text(
-                    text = buildGameSubtitle(game),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = game.genres.firstOrNull()?.name ?: "Unknown",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+
+                    if (game.platforms.isNotEmpty()) {
+                        PlatformIcons(
+                            platforms = game.platforms,
+                            iconSize = 13.dp,
+                            showLeadingSeparator = true
+                        )
+                    }
+                }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1040,20 +983,6 @@ private fun CollectionGameCard(
             }
         }
     }
-}
-private fun buildGameSubtitle(
-    game: GameEntity
-): String {
-    val genre =
-        game.genres.firstOrNull()?.name
-
-    val platform =
-        game.platforms.firstOrNull()
-
-    return listOfNotNull(
-        genre,
-        platform
-    ).joinToString(" • ")
 }
 @Composable
 private fun CollectionStatusBadge(

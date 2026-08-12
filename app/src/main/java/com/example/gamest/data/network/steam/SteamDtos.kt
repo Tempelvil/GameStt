@@ -4,6 +4,25 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
+data class SteamPlayerSummariesResponseDto(
+    val response: SteamPlayerSummariesPayloadDto =
+        SteamPlayerSummariesPayloadDto()
+)
+
+@Serializable
+data class SteamPlayerSummariesPayloadDto(
+    val players: List<SteamPlayerDto> = emptyList()
+)
+
+@Serializable
+data class SteamPlayerDto(
+    val steamid: String,
+    val personaname: String = "Steam user",
+    val profileurl: String? = null,
+    val avatarfull: String? = null
+)
+
+@Serializable
 data class SteamOwnedGamesResponseDto(
     val response: SteamOwnedGamesPayloadDto = SteamOwnedGamesPayloadDto()
 )

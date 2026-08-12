@@ -14,6 +14,7 @@ import com.example.gamest.data.repository.SteamConnectionResult
 import com.example.gamest.data.repository.SteamGame
 import com.example.gamest.data.repository.SteamGamesUnavailableException
 import com.example.gamest.data.repository.SteamProfileNotFoundException
+import com.example.gamest.data.repository.SteamProfileLimitException
 import com.example.gamest.data.repository.SteamRepository
 import java.io.IOException
 import kotlinx.coroutines.CancellationException
@@ -29,6 +30,10 @@ class SteamConnectionViewModel(
     private val steamConnectionPreferences: SteamConnectionPreferences
 ) : ViewModel() {
 
+    private var restoredSteamId: String? = null
+    private var pendingConnectionResult: SteamConnectionResult? = null
+    private var previousProfileUrl: String = ""
+
     private val _uiState = MutableStateFlow(
         SteamConnectionUiState()
     )
@@ -36,7 +41,6 @@ class SteamConnectionViewModel(
         _uiState.asStateFlow()
 
     fun onProfileUrlChange(profileUrl: String) {
-        println("STEAM INPUT = [$profileUrl]")
         _uiState.update { state ->
             state.copy(
                 profileUrl = profileUrl,
@@ -48,10 +52,7 @@ class SteamConnectionViewModel(
 
     fun checkConnection() {
         val profileUrl = _uiState.value.profileUrl.trim()
-
-        println("STEAM CHECK = [$profileUrl]")
-
-        if (_uiState.value.isLoading) {
+        if (_uiState.value.isLoading || profileUrl.isBlank()) {
             return
         }
 
@@ -67,11 +68,27 @@ class SteamConnectionViewModel(
 
             try {
                 val result = steamRepository.checkConnection(profileUrl)
+                pendingConnectionResult = result
+
+                if (
+                    _uiState.value.isConnected &&
+                    !_uiState.value.isAddingProfile
+                ) {
+                    steamRepository.saveProfileAndLibrary(result)
+                    saveConnection(
+                        profileUrl = result.canonicalProfileUrl,
+                        steamId = result.steamId,
+                        personaName = result.personaName,
+                        avatarUrl = result.avatarUrl
+                    )
+                }
 
                 _uiState.update { state ->
                     state.copy(
+                        profileUrl = result.canonicalProfileUrl,
                         isLoading = false,
-                        result = result.toUiModel()
+                        result = result.toUiModel(),
+                        errorMessage = null
                     )
                 }
             } catch (exception: CancellationException) {
@@ -83,6 +100,8 @@ class SteamConnectionViewModel(
             } catch (exception: SteamGamesUnavailableException) {
                 showError(exception.message)
             } catch (exception: SteamConfigurationException) {
+                showError(exception.message)
+            } catch (exception: SteamProfileLimitException) {
                 showError(exception.message)
             } catch (exception: HttpException) {
                 showError(getHttpErrorMessage(exception.code()))
@@ -97,37 +116,71 @@ class SteamConnectionViewModel(
             }
         }
     }
-    fun connectProfile(){
+    fun connectProfile(onSuccess: () -> Unit = {}) {
         val state = _uiState.value
         val result = state.result ?: return
+        val repositoryResult = pendingConnectionResult ?: return
 
         viewModelScope.launch {
-            steamConnectionPreferences.saveConnection(
-                profileUrl = state.profileUrl,
-                steamId = result.steamId
+            try {
+                steamRepository.saveProfileAndLibrary(repositoryResult)
+                saveConnection(
+                    profileUrl = result.canonicalProfileUrl,
+                    steamId = result.steamId,
+                    personaName = result.personaName,
+                    avatarUrl = result.avatarUrl
+                )
+                _uiState.update { current ->
+                    current.copy(isAddingProfile = false)
+                }
+                onSuccess()
+            } catch (exception: SteamProfileLimitException) {
+                showError(exception.message)
+            }
+        }
+    }
+
+    fun beginAddingProfile() {
+        previousProfileUrl = _uiState.value.profileUrl
+        pendingConnectionResult = null
+        _uiState.update { state ->
+            state.copy(
+                profileUrl = "",
+                result = null,
+                errorMessage = null,
+                isAddingProfile = true
             )
         }
     }
-    fun disconnectProfile(){
-        viewModelScope.launch {
-            steamConnectionPreferences.clearConnection()
 
-            _uiState.update { state ->
-                state.copy(
-                    profileUrl = "",
-                    result = null,
-                    errorMessage = null
+    fun disconnectProfile() {
+        viewModelScope.launch {
+            _uiState.value.connectedSteamId?.let { steamId ->
+                steamRepository.updateProfileStatus(
+                    steamId,
+                    com.example.gamest.data.local.SteamProfileStatus.UNLINKED
                 )
             }
+            steamConnectionPreferences.clearConnection()
+            restoredSteamId = null
+            pendingConnectionResult = null
+
+            _uiState.value = SteamConnectionUiState()
         }
     }
 
     fun reset() {
         _uiState.update { state ->
             state.copy(
-                result = null,
+                profileUrl = if (state.isAddingProfile) {
+                    previousProfileUrl
+                } else {
+                    state.profileUrl
+                },
                 errorMessage = null,
-                isLoading = false
+                isLoading = false,
+                result = if (state.isAddingProfile) null else state.result,
+                isAddingProfile = false
             )
         }
     }
@@ -136,7 +189,7 @@ class SteamConnectionViewModel(
         _uiState.update { state ->
             state.copy(
                 isLoading = false,
-                result = null,
+                result = if (state.isConnected) state.result else null,
                 errorMessage = message
                     ?: "Unable to check this Steam profile."
             )
@@ -163,6 +216,10 @@ class SteamConnectionViewModel(
                         isConnected = connection.isConnected,
                         connectedSteamId = connection.steamId
                             .takeIf { it.isNotBlank() },
+                        connectedPersonaName = connection.personaName
+                            .takeIf { it.isNotBlank() },
+                        connectedAvatarUrl = connection.avatarUrl
+                            .takeIf { it.isNotBlank() },
                         lastSyncAt = connection.lastSyncAt,
                         profileUrl = if (connection.isConnected) {
                             connection.profileUrl
@@ -171,8 +228,32 @@ class SteamConnectionViewModel(
                         }
                     )
                 }
+
+                if (
+                    connection.isConnected &&
+                    connection.profileUrl.isNotBlank() &&
+                    restoredSteamId != connection.steamId
+                ) {
+                    restoredSteamId = connection.steamId
+                    checkConnection()
+                }
             }
         }
+    }
+
+    private suspend fun saveConnection(
+        profileUrl: String,
+        steamId: String,
+        personaName: String,
+        avatarUrl: String?
+    ) {
+        restoredSteamId = steamId
+        steamConnectionPreferences.saveConnection(
+            profileUrl = profileUrl,
+            steamId = steamId,
+            personaName = personaName,
+            avatarUrl = avatarUrl
+        )
     }
 
     companion object {
@@ -195,10 +276,14 @@ class SteamConnectionViewModel(
 private fun SteamConnectionResult.toUiModel(): SteamConnectionResultUiModel {
     return SteamConnectionResultUiModel(
         steamId = steamId,
+        personaName = personaName,
+        avatarUrl = avatarUrl,
+        canonicalProfileUrl = canonicalProfileUrl,
         ownedGamesCount = ownedGamesCount,
         totalPlaytimeMinutes = totalPlaytimeMinutes,
         recentlyPlayedCount = recentlyPlayedCount,
         games = games.map(SteamGame::toUiModel)
+            .take(MAX_DIALOG_GAMES)
     )
 }
 
@@ -210,3 +295,5 @@ private fun SteamGame.toUiModel(): SteamGameUiModel {
         recentPlaytimeMinutes = recentPlaytimeMinutes
     )
 }
+
+private const val MAX_DIALOG_GAMES = 10
