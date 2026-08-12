@@ -4,7 +4,11 @@ data class SteamConnectionUiState(
     val profileUrl: String = "",
     val isLoading: Boolean = false,
     val result: SteamConnectionResultUiModel? = null,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+
+    val isConnected: Boolean = false,
+    val connectedSteamId: String? = null,
+    val lastSyncAt: Long? = null
 )
 
 data class SteamConnectionResultUiModel(

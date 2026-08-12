@@ -4,6 +4,7 @@ import androidx.room.Room
 import com.example.gamest.BuildConfig
 import com.example.gamest.data.local.GameDao
 import com.example.gamest.data.local.GameDatabase
+import com.example.gamest.data.local.preferences.SteamConnectionPreferences
 import com.example.gamest.data.network.RawgApiService
 import com.example.gamest.data.network.steam.SteamApiService
 import com.example.gamest.data.repository.DefaultLocalGamesRepository
@@ -24,6 +25,8 @@ interface AppContainer {
     val gamesRepository: GamesRepository
     val localGamesRepository: LocalGamesRepository
     val steamRepository: SteamRepository
+
+    val steamConnectionPreferences: SteamConnectionPreferences
 }
 
 
@@ -99,4 +102,8 @@ class DefaultAppContainer(
             apiKey = BuildConfig.STEAM_API_KEY
         )
     }
+    override val steamConnectionPreferences: SteamConnectionPreferences by lazy{
+        SteamConnectionPreferences(context)
+    }
+
 }

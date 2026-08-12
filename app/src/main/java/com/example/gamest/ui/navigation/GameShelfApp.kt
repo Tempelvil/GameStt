@@ -188,13 +188,21 @@ fun GameShelfApp(
                 if (showSteamConnectionDialog) {
                     SteamConnectionDialog(
                         uiState = steamConnectionUiState,
-                        onProfileUrlChange =
-                            steamConnectionViewModel::onProfileUrlChange,
-                        onCheckConnection =
-                            steamConnectionViewModel::checkConnection,
+                        onProfileUrlChange ={ profileUrl->
+                            steamConnectionViewModel.onProfileUrlChange(profileUrl)
+                                            },
+                        onCheckConnection ={
+                            steamConnectionViewModel.checkConnection()
+                                           },
                         onDismissRequest = {
                             showSteamConnectionDialog = false
                             steamConnectionViewModel.reset()
+                        },
+                        onConnect = {
+                            steamConnectionViewModel.connectProfile()
+                        },
+                        onDisconnect = {
+                            steamConnectionViewModel.disconnectProfile()
                         }
                     )
                 }

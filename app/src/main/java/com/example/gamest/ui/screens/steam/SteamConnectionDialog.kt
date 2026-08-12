@@ -47,6 +47,8 @@ fun SteamConnectionDialog(
     uiState: SteamConnectionUiState,
     onProfileUrlChange: (String) -> Unit,
     onCheckConnection: () -> Unit,
+    onConnect: () -> Unit,
+    onDisconnect: () -> Unit,
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -84,8 +86,24 @@ fun SteamConnectionDialog(
                     closeEnabled = !uiState.isLoading,
                     onCloseClick = onDismissRequest
                 )
+                if (uiState.isConnected) {
 
-                Spacer(modifier = Modifier.height(18.dp))
+                    SteamConnectedContent(
+                        uiState = uiState,
+                        onDisconnect = onDisconnect
+                    )
+
+                } else {
+
+                    SteamNotConnectedContent(
+                        uiState = uiState,
+                        onProfileUrlChange = onProfileUrlChange,
+                        onCheckConnection = onCheckConnection,
+                        onConnect = onConnect
+                    )
+                }
+
+                /*Spacer(modifier = Modifier.height(18.dp))
 
                 Text(
                     text = "Paste the link from your Steam profile. Your Game details must be public.",
@@ -148,8 +166,155 @@ fun SteamConnectionDialog(
                 uiState.result?.let { result ->
                     Spacer(modifier = Modifier.height(18.dp))
                     SteamConnectionResultContent(result)
-                }
+                }*/
             }
+        }
+    }
+}
+@Composable
+private fun SteamNotConnectedContent(
+    uiState: SteamConnectionUiState,
+    onProfileUrlChange: (String) -> Unit,
+    onCheckConnection: () -> Unit,
+    onConnect: () -> Unit
+) {
+    Column {
+
+        Spacer(modifier = Modifier.height(18.dp))
+
+        Text(
+            text = "Paste the link from your Steam profile. Your Game details must be public.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        OutlinedTextField(
+            value = uiState.profileUrl,
+            onValueChange = onProfileUrlChange,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !uiState.isLoading,
+            label = {
+                Text("Steam profile link")
+            },
+            placeholder = {
+                Text(
+                    "https://steamcommunity.com/id/username/"
+                )
+            },
+            supportingText = {
+                Text(
+                    "Only steamcommunity.com profile links are accepted"
+                )
+            },
+            isError = uiState.errorMessage != null,
+            singleLine = true
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Button(
+            onClick = onCheckConnection,
+            enabled = !uiState.isLoading &&
+                    uiState.profileUrl.isNotBlank(),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+
+            if (uiState.isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+
+                Spacer(modifier = Modifier.width(10.dp))
+            }
+
+            Text("Check connection")
+        }
+
+        uiState.errorMessage?.let { message ->
+            Spacer(modifier = Modifier.height(16.dp))
+            SteamErrorContent(message)
+        }
+
+        uiState.result?.let { result ->
+
+            Spacer(modifier = Modifier.height(18.dp))
+
+            SteamConnectionResultContent(result)
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(
+                onClick = onConnect,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Connect Steam")
+            }
+        }
+    }
+}
+@Composable
+private fun SteamConnectedContent(
+    uiState: SteamConnectionUiState,
+    onDisconnect: () -> Unit
+) {
+    Column {
+
+        Spacer(modifier = Modifier.height(18.dp))
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.CheckCircle,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            Column {
+                Text(
+                    text = "Steam connected",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Text(
+                    text = "Your Steam profile is saved",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        uiState.connectedSteamId?.let { steamId ->
+
+            SteamResultMetric(
+                title = "Steam ID",
+                value = steamId,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        uiState.result?.let { result ->
+            SteamConnectionResultContent(result)
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Button(
+            onClick = onDisconnect,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Disconnect Steam")
         }
     }
 }
@@ -439,7 +604,9 @@ private fun SteamConnectionDialogPreview() {
             uiState = previewSteamConnectionState,
             onProfileUrlChange = {},
             onCheckConnection = {},
-            onDismissRequest = {}
+            onDismissRequest = {},
+            onConnect = {},
+            onDisconnect = {}
         )
     }
 }

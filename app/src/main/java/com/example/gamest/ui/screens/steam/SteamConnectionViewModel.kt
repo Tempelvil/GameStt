@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.gamest.GameStApplication
+import com.example.gamest.data.local.preferences.SteamConnectionPreferences
 import com.example.gamest.data.repository.InvalidSteamProfileUrlException
 import com.example.gamest.data.repository.SteamConfigurationException
 import com.example.gamest.data.repository.SteamConnectionResult
@@ -24,7 +25,8 @@ import kotlinx.coroutines.launch
 import retrofit2.HttpException
 
 class SteamConnectionViewModel(
-    private val steamRepository: SteamRepository
+    private val steamRepository: SteamRepository,
+    private val steamConnectionPreferences: SteamConnectionPreferences
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
@@ -34,6 +36,7 @@ class SteamConnectionViewModel(
         _uiState.asStateFlow()
 
     fun onProfileUrlChange(profileUrl: String) {
+        println("STEAM INPUT = [$profileUrl]")
         _uiState.update { state ->
             state.copy(
                 profileUrl = profileUrl,
@@ -45,6 +48,9 @@ class SteamConnectionViewModel(
 
     fun checkConnection() {
         val profileUrl = _uiState.value.profileUrl.trim()
+
+        println("STEAM CHECK = [$profileUrl]")
+
         if (_uiState.value.isLoading) {
             return
         }
@@ -91,9 +97,39 @@ class SteamConnectionViewModel(
             }
         }
     }
+    fun connectProfile(){
+        val state = _uiState.value
+        val result = state.result ?: return
+
+        viewModelScope.launch {
+            steamConnectionPreferences.saveConnection(
+                profileUrl = state.profileUrl,
+                steamId = result.steamId
+            )
+        }
+    }
+    fun disconnectProfile(){
+        viewModelScope.launch {
+            steamConnectionPreferences.clearConnection()
+
+            _uiState.update { state ->
+                state.copy(
+                    profileUrl = "",
+                    result = null,
+                    errorMessage = null
+                )
+            }
+        }
+    }
 
     fun reset() {
-        _uiState.value = SteamConnectionUiState()
+        _uiState.update { state ->
+            state.copy(
+                result = null,
+                errorMessage = null,
+                isLoading = false
+            )
+        }
     }
 
     private fun showError(message: String?) {
@@ -118,6 +154,26 @@ class SteamConnectionViewModel(
             else -> "Steam request failed with HTTP code $code."
         }
     }
+    init {
+        viewModelScope.launch {
+            steamConnectionPreferences.connectionData.collect { connection ->
+
+                _uiState.update { state ->
+                    state.copy(
+                        isConnected = connection.isConnected,
+                        connectedSteamId = connection.steamId
+                            .takeIf { it.isNotBlank() },
+                        lastSyncAt = connection.lastSyncAt,
+                        profileUrl = if (connection.isConnected) {
+                            connection.profileUrl
+                        } else {
+                            state.profileUrl
+                        }
+                    )
+                }
+            }
+        }
+    }
 
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
@@ -127,7 +183,9 @@ class SteamConnectionViewModel(
 
                 SteamConnectionViewModel(
                     steamRepository =
-                        application.container.steamRepository
+                        application.container.steamRepository,
+                    steamConnectionPreferences =
+                        application.container.steamConnectionPreferences
                 )
             }
         }
