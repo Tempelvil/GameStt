@@ -29,7 +29,6 @@ class SteamRepositoryTest {
     fun checkConnection_returnsProfileAndPlaytime() = runBlocking {
         val repository = DefaultSteamRepository(
             apiService = FakeSteamApiService(),
-            apiKey = "test-key",
             steamGameDao = FakeSteamGameDao()
         )
 
@@ -55,7 +54,6 @@ class SteamRepositoryTest {
         val dao = FakeSteamGameDao()
         val repository = DefaultSteamRepository(
             apiService = FakeSteamApiService(),
-            apiKey = "test-key",
             steamGameDao = dao
         )
         val first = repository.checkConnection(
@@ -84,7 +82,6 @@ class SteamRepositoryTest {
         val dao = FakeSteamGameDao()
         val repository = DefaultSteamRepository(
             apiService = FakeSteamApiService(),
-            apiKey = "test-key",
             steamGameDao = dao
         )
         repository.saveProfileAndLibrary(
@@ -105,9 +102,7 @@ class SteamRepositoryTest {
 private class FakeSteamApiService : SteamApiService {
 
     override suspend fun getPlayerSummaries(
-        apiKey: String,
-        steamIds: String,
-        format: String
+        steamIds: String
     ) = SteamPlayerSummariesResponseDto(
         response = SteamPlayerSummariesPayloadDto(
             players = listOf(
@@ -123,11 +118,7 @@ private class FakeSteamApiService : SteamApiService {
     )
 
     override suspend fun getOwnedGames(
-        apiKey: String,
-        steamId: String,
-        includeAppInfo: Boolean,
-        includePlayedFreeGames: Boolean,
-        format: String
+        steamId: String
     ) = SteamOwnedGamesResponseDto(
         response = SteamOwnedGamesPayloadDto(
             gameCount = 2,
@@ -147,10 +138,7 @@ private class FakeSteamApiService : SteamApiService {
     )
 
     override suspend fun getRecentlyPlayedGames(
-        apiKey: String,
-        steamId: String,
-        count: Int,
-        format: String
+        steamId: String
     ) = SteamRecentlyPlayedResponseDto(
         response = SteamRecentlyPlayedPayloadDto(
             totalCount = 1,
@@ -166,10 +154,7 @@ private class FakeSteamApiService : SteamApiService {
     )
 
     override suspend fun resolveVanityUrl(
-        apiKey: String,
-        vanityUrl: String,
-        urlType: Int,
-        format: String
+        vanityUrl: String
     ) = SteamVanityResponseDto(
         response = SteamVanityPayloadDto(
             steamid = "76561198000000000",

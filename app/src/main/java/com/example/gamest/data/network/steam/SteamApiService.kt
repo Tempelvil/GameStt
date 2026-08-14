@@ -5,35 +5,23 @@ import retrofit2.http.Query
 
 interface SteamApiService {
 
-    @GET("ISteamUser/GetPlayerSummaries/v0002/")
+    @GET("steam/player-summaries")
     suspend fun getPlayerSummaries(
-        @Query("key") apiKey: String,
-        @Query("steamids") steamIds: String,
-        @Query("format") format: String = "json"
+        @Query("steamIds") steamIds: String
     ): SteamPlayerSummariesResponseDto
 
-    @GET("IPlayerService/GetOwnedGames/v0001/")
+    @GET("steam/owned-games")
     suspend fun getOwnedGames(
-        @Query("key") apiKey: String,
-        @Query("steamid") steamId: String,
-        @Query("include_appinfo") includeAppInfo: Boolean = true,
-        @Query("include_played_free_games") includePlayedFreeGames: Boolean = true,
-        @Query("format") format: String = "json"
+        @Query("steamId") steamId: String
     ): SteamOwnedGamesResponseDto
 
-    @GET("IPlayerService/GetRecentlyPlayedGames/v0001/")
+    @GET("steam/recently-played")
     suspend fun getRecentlyPlayedGames(
-        @Query("key") apiKey: String,
-        @Query("steamid") steamId: String,
-        @Query("count") count: Int = 0,
-        @Query("format") format: String = "json"
+        @Query("steamId") steamId: String
     ): SteamRecentlyPlayedResponseDto
 
-    @GET("ISteamUser/ResolveVanityURL/v0001/")
+    @GET("steam/resolve-vanity")
     suspend fun resolveVanityUrl(
-        @Query("key") apiKey: String,
-        @Query("vanityurl") vanityUrl: String,
-        @Query("url_type") urlType: Int = 1,
-        @Query("format") format: String = "json"
+        @Query("vanityUrl") vanityUrl: String
     ): SteamVanityResponseDto
 }

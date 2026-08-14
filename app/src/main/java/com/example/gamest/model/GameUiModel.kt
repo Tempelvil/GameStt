@@ -5,12 +5,12 @@ data class GameUiModel(
     val id: Int,
     val title: String,
     val imageUrl: String,
-    val rating: Double,
+    val communityRating: Double,
     val genres: List<String>,
     val platforms: List<String>,
     val isSaved: Boolean = false,
     val status: GameStatus? = null,
-    val metacritic: Int? = null
+    val criticRating: Int? = null
 )
 data class GameDetailsUiModel(
     val id: Int,
@@ -18,8 +18,8 @@ data class GameDetailsUiModel(
     val imageUrl: String,
     val description: String,
     val releaseDate: String,
-    val rating: Double,
-    val metacritic: Int?,
+    val communityRating: Double,
+    val criticRating: Int?,
     val genres: List<GameTagUiModel>,
     val platforms: List<String>,
     val developers: List<GameCompanyUiModel>,
@@ -28,7 +28,19 @@ data class GameDetailsUiModel(
     val isSaved: Boolean = false,
 
     val ageRating: GameAgeRatingUiModel?,
-    val playtime: Int,
+    val timeToBeat: GameTimeToBeatUiModel = GameTimeToBeatUiModel(),
+)
+
+data class GamePage(
+    val games: List<GameUiModel>,
+    val hasMore: Boolean
+)
+
+data class GameTimeToBeatUiModel(
+    val hastilySeconds: Int? = null,
+    val normallySeconds: Int? = null,
+    val completelySeconds: Int? = null,
+    val submissionsCount: Int = 0
 )
 data class GameAgeRatingUiModel(
     val id: Int,

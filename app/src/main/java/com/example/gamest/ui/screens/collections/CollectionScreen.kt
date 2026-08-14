@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.gamest.R
 import com.example.gamest.data.local.GameEntity
+import com.example.gamest.data.local.CompletionStyle
 import com.example.gamest.data.local.GameStatus
 import com.example.gamest.data.local.StoredAgeRating
 import com.example.gamest.data.local.StoredCompany
@@ -77,6 +78,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.window.Dialog
@@ -89,7 +91,7 @@ fun CollectionScreen(
     onSortClick: (CollectionSort) -> Unit,
     onSteamClick: () -> Unit,
     onOpenGame: (Int) -> Unit,
-    onEditConfirm: (Int,GameStatus,Int?,Int) -> Unit,
+    onEditConfirm: (Int,GameStatus,Int?,CompletionStyle?,Int) -> Unit,
     onDeleteGame: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -227,7 +229,7 @@ fun CollectionScreen(
                 editingGameId = null
             },
 
-            onConfirm = { status, rating, hours ->
+            onConfirm = { status, rating, completionStyle, hours ->
                 val gameId = editingGame.id
 
                 editingGameId = null
@@ -236,6 +238,7 @@ fun CollectionScreen(
                     gameId,
                     status,
                     rating,
+                    completionStyle,
                     hours
                 )
             }
@@ -266,6 +269,7 @@ private fun EditGameDialog(
     onConfirm: (
         GameStatus,
         Int?,
+        CompletionStyle?,
         Int
     ) -> Unit
 ) {
@@ -277,6 +281,10 @@ private fun EditGameDialog(
         mutableStateOf(
             game.userRating?.toString().orEmpty()
         )
+    }
+
+    var completionStyle by rememberSaveable(game.id) {
+        mutableStateOf(game.completionStyle)
     }
 
     var hoursText by rememberSaveable(game.id) {
@@ -473,6 +481,21 @@ private fun EditGameDialog(
                     Modifier.fillMaxWidth()
             )
 
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "How did you play?",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                CompletionStyle.entries.forEach { style ->
+                    FilterChip(
+                        selected = completionStyle == style,
+                        onClick = { completionStyle = style },
+                        label = { Text(style.toCollectionDisplayName()) }
+                    )
+                }
+            }
+
             Row(
                 modifier =
                     Modifier.fillMaxWidth(),
@@ -496,6 +519,7 @@ private fun EditGameDialog(
                         onConfirm(
                             selectedStatus,
                             userRating,
+                            completionStyle,
                             hoursPlayed
                         )
                     },
@@ -508,6 +532,12 @@ private fun EditGameDialog(
             }
         }
     }
+}
+
+private fun CompletionStyle.toCollectionDisplayName(): String = when (this) {
+    CompletionStyle.RUSHED -> "Rushed"
+    CompletionStyle.NORMAL -> "Normal"
+    CompletionStyle.COMPLETIONIST -> "Completionist"
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -563,6 +593,10 @@ private fun CollectionGameActionsBottomSheet(
                             append(" • $rating/10")
                         }
 
+                        game.completionStyle?.let { style ->
+                            append(" · ${style.toCollectionDisplayName()}")
+                        }
+
                         if (game.hoursPlayed > 0) {
                             append(" • ${game.hoursPlayed} ч")
                         }
@@ -597,7 +631,7 @@ private fun CollectionGameActionsBottomSheet(
                     Text("Edit")
                 },
                 supportingContent = {
-                    Text("Edit status, rating and hours")
+                    Text("Edit status, rating, play style and hours")
                 },
                 leadingContent = {
                     Icon(
@@ -1032,7 +1066,7 @@ private fun CollectionDarkPreview() {
             onSortClick = {},
             onSteamClick = {},
             onOpenGame = {},
-            onEditConfirm = { _, _, _, _ -> },
+            onEditConfirm = { _, _, _, _, _ -> },
             onDeleteGame = {},
             modifier = Modifier,
         )
@@ -1055,7 +1089,7 @@ private fun CollectionLightPreview() {
             onSortClick = {},
             onSteamClick = {},
             onOpenGame = {},
-            onEditConfirm = { _, _, _, _ -> },
+            onEditConfirm = { _, _, _, _, _ -> },
             onDeleteGame = {},
             modifier = Modifier,
         )
@@ -1115,9 +1149,11 @@ private fun previewCollectionGame(
         imageUrl = "",
         description = "",
         releaseDate = "2023-01-01",
-        ratingRawg = 4.5,
-        metacritic = 90,
-        playtime = 20,
+        communityRating = 90.0,
+        criticRating = 90,
+        hastilySeconds = 54_000,
+        normallySeconds = 72_000,
+        completelySeconds = 108_000,
 
         genres = listOf(
             StoredTag(

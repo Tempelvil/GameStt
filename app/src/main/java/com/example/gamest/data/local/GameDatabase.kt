@@ -12,8 +12,8 @@ import androidx.room.TypeConverters
         SteamSyncEntity::class,
         SteamPlaytimeDeltaEntity::class
     ],
-    version = 3,
-    exportSchema = false
+    version = 4,
+    exportSchema = true
 )
 @TypeConverters(GameConverters::class)
 abstract class GameDatabase : RoomDatabase() {

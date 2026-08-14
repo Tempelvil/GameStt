@@ -86,7 +86,6 @@ data class SteamGame(
 
 class DefaultSteamRepository(
     private val apiService: SteamApiService,
-    private val apiKey: String,
     private val steamGameDao: SteamGameDao
 ) : SteamRepository {
 
@@ -212,16 +211,9 @@ class DefaultSteamRepository(
     override suspend fun checkConnection(
         profileUrl: String
     ): SteamConnectionResult {
-        if (apiKey.isBlank()) {
-            throw SteamConfigurationException(
-                "Steam API key is missing from local.properties."
-            )
-        }
-
         val reference = SteamProfileUrlParser.parse(profileUrl)
         val steamId = resolveSteamId(reference)
         val player = apiService.getPlayerSummaries(
-            apiKey = apiKey,
             steamIds = steamId
         ).response.players.firstOrNull()
             ?: throw SteamProfileNotFoundException(
@@ -229,7 +221,6 @@ class DefaultSteamRepository(
             )
 
         val ownedResponse = apiService.getOwnedGames(
-            apiKey = apiKey,
             steamId = steamId
         ).response
 
@@ -239,7 +230,6 @@ class DefaultSteamRepository(
             )
 
         val recentlyPlayedResponse = apiService.getRecentlyPlayedGames(
-            apiKey = apiKey,
             steamId = steamId
         ).response
 
@@ -287,7 +277,6 @@ class DefaultSteamRepository(
 
             SteamProfileReferenceType.VANITY_NAME -> {
                 val response = apiService.resolveVanityUrl(
-                    apiKey = apiKey,
                     vanityUrl = reference.value
                 ).response
 

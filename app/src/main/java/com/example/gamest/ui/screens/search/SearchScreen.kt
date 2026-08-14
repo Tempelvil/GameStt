@@ -29,6 +29,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
@@ -43,11 +44,15 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -71,6 +76,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.draw.clip
 import com.example.gamest.ui.components.PlatformIcons
 import com.example.gamest.ui.components.CompactFilterBar
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 
 @Composable
@@ -87,6 +94,12 @@ fun SearchScreen(
     modifier: Modifier = Modifier
 ) {
     val gridState = rememberLazyGridState()
+    val coroutineScope = rememberCoroutineScope()
+    val showScrollToTop by remember {
+        derivedStateOf {
+            gridState.firstVisibleItemIndex >= FIRST_GAME_INDEX + PAGE_SIZE
+        }
+    }
 
     var showGenresSheet by rememberSaveable {
         mutableStateOf(false)
@@ -110,10 +123,15 @@ fun SearchScreen(
         }
     }
 
+    LaunchedEffect(uiState.selectedFilter) {
+        gridState.scrollToItem(0)
+    }
+
+    Box(modifier = modifier.fillMaxSize()) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
         state = gridState,
-        modifier = modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
             start = 20.dp,
             end = 20.dp,
@@ -138,8 +156,9 @@ fun SearchScreen(
 
             val sectionDescription = when {
                 uiState.searchQuery.isNotBlank() -> "Games matching your search"
-                uiState.selectedFilter == GameFilter.TopRated -> "The highest rated games by the community"
-                else -> "Popular ${uiState.selectedFilter.title} games"
+                uiState.selectedFilter == GameFilter.TopRated ->
+                    "Top 100 games by IGDB user rating"
+                else -> "Highest user-rated ${uiState.selectedFilter.title} games"
             }
 
             Column {
@@ -203,8 +222,27 @@ fun SearchScreen(
                 }
             }
         }
+    }
 
-
+        if (showScrollToTop) {
+            SmallFloatingActionButton(
+                onClick = {
+                    coroutineScope.launch {
+                        gridState.animateScrollToItem(0)
+                    }
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp),
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            ) {
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowUp,
+                    contentDescription = "Back to top"
+                )
+            }
+        }
     }
     if (showGenresSheet) {
         GenresBottomSheet(
@@ -438,7 +476,11 @@ fun GameCard(
                         Spacer(modifier = Modifier.width(4.dp))
 
                         Text(
-                            text = game.metacritic?.toString() ?: "—",
+                            text = game.communityRating
+                                .takeIf { it > 0.0 }
+                                ?.roundToInt()
+                                ?.toString()
+                                ?: "—",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -494,6 +536,9 @@ fun GameCard(
         }
     }
 }
+
+private const val FIRST_GAME_INDEX = 3
+private const val PAGE_SIZE = 20
 
 @Composable
 private fun GameGenreAndPlatforms(
@@ -587,7 +632,7 @@ fun SearchScreenPreview() {
                         id = 1,
                         title = "The Witcher 3",
                         imageUrl = "",
-                        rating = 4.8,
+                        communityRating = 96.0,
                         genres = listOf("RPG", "Adventure"),
                         platforms = listOf("PC", "PlayStation")
                     ),
@@ -595,7 +640,7 @@ fun SearchScreenPreview() {
                         id = 2,
                         title = "Cyberpunk 2077",
                         imageUrl = "",
-                        rating = 4.5,
+                        communityRating = 90.0,
                         genres = listOf("RPG", "Action"),
                         platforms = listOf("PC", "Xbox")
                     )

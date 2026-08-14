@@ -1,56 +1,37 @@
 package com.example.gamest.data.repository
 
-import com.example.gamest.data.network.RawgApiService
-import com.example.gamest.data.network.RawgGameDetailsDto
-import com.example.gamest.data.network.RawgGameDto
-import com.example.gamest.data.network.RawgGamesResponseDto
+import com.example.gamest.data.network.IgdbAgeRatingDto
+import com.example.gamest.data.network.IgdbGameDto
+import com.example.gamest.data.network.IgdbTimeToBeatDto
+import com.example.gamest.data.network.WorkerGamesApiService
 import com.example.gamest.model.GameAgeRatingUiModel
 import com.example.gamest.model.GameCompanyUiModel
 import com.example.gamest.model.GameDetailsUiModel
 import com.example.gamest.model.GameFilter
+import com.example.gamest.model.GamePage
 import com.example.gamest.model.GameTagUiModel
+import com.example.gamest.model.GameTimeToBeatUiModel
 import com.example.gamest.model.GameUiModel
-import java.time.LocalDate
+import java.time.Instant
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.time.format.DateTimeParseException
 import java.util.Locale
+import kotlin.math.roundToInt
 
 class GamesRepository(
-    private val apiService: RawgApiService,
-    private val apiKey: String
-){
+    private val apiService: WorkerGamesApiService,
+    private val isWorkerConfigured: Boolean
+) {
 
-    suspend fun getGameDetails(
-        gameId: Int
-    ): GameDetailsUiModel {
-
-        val detailsResponse = apiService.getGamesDetails(
-            gameId = gameId,
-            apiKey = apiKey
-        )
-
-        val screenshotsResponse = apiService.getScreenshots(
-            gameId = gameId,
-            apiKey = apiKey,
-            pageSize = 4
-        )
-
-        val screenshots = screenshotsResponse.screenshots
-            .map { it.image
-            }
-            .ifEmpty {
-                listOfNotNull(detailsResponse.backgroundImage)
-            }
-
-        return detailsResponse.toGameDetailsUiModel(
-            screenshots = screenshots
-        )
+    suspend fun getGameDetails(gameId: Int): GameDetailsUiModel {
+        checkConfiguration()
+        val response = apiService.getGameDetails(gameId)
+        return response.game.toGameDetailsUiModel(response.timeToBeat)
     }
-    suspend fun getGenres():List<GameTagUiModel>{
-        val response = apiService.getGenres(
-            apiKey = apiKey
-        )
-        return response.genres.map{ genre ->
+
+    suspend fun getGenres(): List<GameTagUiModel> {
+        checkConfiguration()
+        return apiService.getGenres().items.map { genre ->
             GameTagUiModel(
                 id = genre.id,
                 name = genre.name,
@@ -58,143 +39,156 @@ class GamesRepository(
             )
         }
     }
+
     suspend fun getGames(
         searchQuery: String,
         filter: GameFilter,
         page: Int
-    ):List<GameUiModel>{
-        val search = searchQuery.takeIf{it.isNotBlank()}
+    ): GamePage {
+        checkConfiguration()
+        val search = searchQuery.trim().takeIf(String::isNotEmpty)
+        val offset = (page - 1).coerceAtLeast(0) * PAGE_SIZE
+        val maxResults = filter.maxResults
 
-        val genres = when{
-            search !=null ->null
-            filter == GameFilter.Rpg -> "role-playing-games-rpg"
-            filter == GameFilter.Action -> "action"
-            filter is GameFilter.Genres -> filter.slug
-            else -> null
+        if (maxResults != null && offset >= maxResults) {
+            return GamePage(games = emptyList(), hasMore = false)
         }
-        val platforms = when{
-            search !=null ->null
-            filter == GameFilter.Pc -> "4"
-            else -> null
-        }
-        val ordering = when {
-            search != null -> null
-            filter == GameFilter.TopRated -> "-metacritic"
-            else -> "-metacritic"
-        }
-        val developers = when{
-            search != null -> null
-            filter is GameFilter.Developer -> filter.id.toString()
-            else -> null
-        }
-        val publishers = when{
-            search != null ->null
-            filter is GameFilter.Publisher -> filter.id.toString()
-            else -> null
-        }
-        val esrbRating = when{
-            search != null -> null
-            filter is GameFilter.AgeRating -> filter.id.toString()
-            else ->null
-        }
+
+        val requestLimit = maxResults
+            ?.let { limit -> minOf(PAGE_SIZE, limit - offset) }
+            ?: PAGE_SIZE
+
         val response = apiService.getGames(
-            apiKey = apiKey,
-            pageSize = 20,
             search = search,
-            page = page,
-            genres = genres,
-            platforms = platforms,
-            ordering = ordering,
-            esrbRating = esrbRating,
-            publishers = publishers,
-            developers = developers,
+            sort = if (search != null) "relevance" else filter.sort,
+            genreId = if (search == null) filter.genreId else null,
+            platformId = if (search == null) filter.platformId else null,
+            developerId = if (search == null) filter.developerId else null,
+            publisherId = if (search == null) filter.publisherId else null,
+            ageRatingCategoryId = if (search == null) {
+                filter.ageRatingCategoryId
+            } else {
+                null
+            },
+            minimumRatings = if (search == null) filter.minimumRatings else null,
+            topOnly = if (search == null) filter.topOnly else null,
+            offset = offset,
+            limit = requestLimit
         )
 
+        val games = response.items.map(IgdbGameDto::toGameUiModel)
+        return GamePage(
+            games = games,
+            hasMore = response.pagination.hasMore &&
+                (maxResults == null || offset + games.size < maxResults)
+        )
+    }
 
-        return response.listGame.map {it.toGameUiModel()}
+    private fun checkConfiguration() {
+        if (!isWorkerConfigured) {
+            throw WorkerConfigurationException(
+                "WORKER_BASE_URL is missing from local.properties."
+            )
+        }
+    }
+
+    private companion object {
+        const val PAGE_SIZE = 20
     }
 }
 
-private fun RawgGameDetailsDto.toGameDetailsUiModel(
-    screenshots:List<String>
-): GameDetailsUiModel {
-    return GameDetailsUiModel(
-        id = id,
-        title = name,
-        imageUrl = backgroundImage ?: "",
-        description = descriptionRaw,
-        releaseDate = formatReleaseDate(released),
-        rating = rating,
-        metacritic = metacritic,
-
-        genres = genres.map { genre ->
-            GameTagUiModel(
-                id = genre.id,
-                name = genre.name,
-                slug = genre.slug
-            )
-        },
-
-        platforms = platforms
-            ?.map { it.platform.name }
-            ?: emptyList(),
-
-        developers = developers.map { developer ->
-            GameCompanyUiModel(
-                id = developer.id,
-                name = developer.name,
-                slug = developer.slug
-            )
-        },
-
-        publishers = publishers.map { publisher ->
-            GameCompanyUiModel(
-                id = publisher.id,
-                name = publisher.name,
-                slug = publisher.slug
-            )
-        },
-        playtime = playtime,
-        screenshots = screenshots,
-        isSaved = false,
-        ageRating = esrbRating?.let { rating ->
-            GameAgeRatingUiModel(
-                id = rating.id,
-                name = rating.name,
-                slug = rating.slug
-            )
-        },
-    )
-}
-private fun formatReleaseDate(date: String?): String {
-    if (date.isNullOrBlank()) {
-        return "Unknown date"
-    }
-
-    return try {
-        LocalDate
-            .parse(date)
-            .format(
-                DateTimeFormatter.ofPattern(
-                    "MMM d, yyyy",
-                    Locale.ENGLISH
-                )
-            )
-    } catch (e: DateTimeParseException) {
-        date
-    }
-}
-
-private fun RawgGameDto.toGameUiModel(): GameUiModel {
+private fun IgdbGameDto.toGameUiModel(): GameUiModel {
     return GameUiModel(
         id = id,
         title = name,
-        imageUrl = backgroundImage ?: "",
-        rating = rating,
-        genres = genres?.map { it.name }?: emptyList(),
-        platforms = platforms?.map { it.platform.name }?: emptyList(),
+        imageUrl = cover?.imageId?.toIgdbImageUrl("t_cover_big").orEmpty(),
+        communityRating = rating ?: 0.0,
+        genres = genres.map { genre -> genre.name },
+        platforms = platforms.map { platform -> platform.name },
         isSaved = false,
-        metacritic = metacritic,
-
+        criticRating = aggregatedRating?.toRoundedInt()
     )
 }
+
+private fun IgdbGameDto.toGameDetailsUiModel(
+    timeToBeat: IgdbTimeToBeatDto?
+): GameDetailsUiModel {
+    val developers = involvedCompanies
+        .filter { company -> company.developer }
+        .map { involved -> involved.company.toUiModel() }
+        .distinctBy(GameCompanyUiModel::id)
+    val publishers = involvedCompanies
+        .filter { company -> company.publisher }
+        .map { involved -> involved.company.toUiModel() }
+        .distinctBy(GameCompanyUiModel::id)
+    val screenshots = screenshots.map { screenshot ->
+        screenshot.imageId.toIgdbImageUrl("t_1080p")
+    }
+    val coverUrl = cover?.imageId
+        ?.toIgdbImageUrl("t_cover_big")
+        .orEmpty()
+
+    return GameDetailsUiModel(
+        id = id,
+        title = name,
+        imageUrl = coverUrl,
+        description = summary ?: storyline.orEmpty(),
+        releaseDate = firstReleaseDate.toReleaseDate(),
+        communityRating = rating ?: 0.0,
+        criticRating = aggregatedRating?.toRoundedInt(),
+        genres = genres.map { genre ->
+            GameTagUiModel(genre.id, genre.name, genre.slug)
+        },
+        platforms = platforms.map { platform -> platform.name },
+        developers = developers,
+        publishers = publishers,
+        screenshots = screenshots.ifEmpty { listOfNotNull(coverUrl.takeIf(String::isNotEmpty)) },
+        isSaved = false,
+        ageRating = ageRatings.selectPreferredRating()?.toUiModel(),
+        timeToBeat = GameTimeToBeatUiModel(
+            hastilySeconds = timeToBeat?.hastily,
+            normallySeconds = timeToBeat?.normally,
+            completelySeconds = timeToBeat?.completely,
+            submissionsCount = timeToBeat?.count ?: 0
+        )
+    )
+}
+
+private fun com.example.gamest.data.network.IgdbNamedReferenceDto.toUiModel() =
+    GameCompanyUiModel(id = id, name = name, slug = slug)
+
+private fun List<IgdbAgeRatingDto>.selectPreferredRating(): IgdbAgeRatingDto? {
+    return firstOrNull { rating ->
+        rating.organization?.name.equals("PEGI", ignoreCase = true)
+    } ?: firstOrNull { rating ->
+        rating.organization?.name.equals("ESRB", ignoreCase = true)
+    } ?: firstOrNull()
+}
+
+private fun IgdbAgeRatingDto.toUiModel(): GameAgeRatingUiModel? {
+    val category = ratingCategory ?: return null
+    val organizationName = organization?.name.orEmpty()
+    return GameAgeRatingUiModel(
+        id = category.id,
+        name = listOf(organizationName, category.rating)
+            .filter(String::isNotBlank)
+            .joinToString(" "),
+        slug = category.rating.lowercase(Locale.ENGLISH)
+    )
+}
+
+private fun String.toIgdbImageUrl(size: String): String {
+    return "https://images.igdb.com/igdb/image/upload/$size/$this.jpg"
+}
+
+private fun Long?.toReleaseDate(): String {
+    if (this == null) return "Unknown date"
+    return Instant.ofEpochSecond(this)
+        .atZone(ZoneId.systemDefault())
+        .toLocalDate()
+        .format(DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.ENGLISH))
+}
+
+private fun Double.toRoundedInt(): Int = roundToInt()
+
+class WorkerConfigurationException(message: String) : IllegalStateException(message)

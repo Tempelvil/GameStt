@@ -21,6 +21,16 @@ class GameConverters {
     }
 
     @TypeConverter
+    fun fromCompletionStyle(style: CompletionStyle?): String? {
+        return style?.name
+    }
+
+    @TypeConverter
+    fun toCompletionStyle(value: String?): CompletionStyle? {
+        return value?.let(CompletionStyle::valueOf)
+    }
+
+    @TypeConverter
     fun fromStoredTags(tags: List<StoredTag>): String {
         return json.encodeToString(tags)
     }

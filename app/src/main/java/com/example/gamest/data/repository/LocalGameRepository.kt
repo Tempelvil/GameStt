@@ -2,6 +2,7 @@ package com.example.gamest.data.repository
 
 
 import com.example.gamest.data.local.GameEntity
+import com.example.gamest.data.local.CompletionStyle
 import com.example.gamest.data.local.GameSort
 import com.example.gamest.data.local.GameStatus
 import kotlinx.coroutines.flow.Flow
@@ -66,6 +67,7 @@ interface LocalGamesRepository {
         gameId: Int,
         status: GameStatus,
         userRating: Int?,
+        completionStyle: CompletionStyle?,
         hoursPlayed: Int
     )
 }

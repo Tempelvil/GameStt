@@ -92,6 +92,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.gamest.data.local.GameStatus
+import com.example.gamest.data.local.CompletionStyle
+import com.example.gamest.model.GameTimeToBeatUiModel
 
 @Composable
 fun DetailsScreen(
@@ -101,11 +103,13 @@ fun DetailsScreen(
     onSaveConfirm: (
         status: GameStatus,
         userRating: Int?,
+        completionStyle: CompletionStyle?,
         hoursPlayed: Int
     ) -> Unit,
     onDeleteConfirm: () -> Unit,
     modifier: Modifier = Modifier,
     onDeveloperClick: (GameCompanyUiModel) -> Unit,
+    onGenreClick: (GameTagUiModel) -> Unit,
     onAgeRatingClick: (GameAgeRatingUiModel) -> Unit,
     onPublisherClick: (GameCompanyUiModel) -> Unit,
 ) {
@@ -198,9 +202,7 @@ fun DetailsScreen(
                 item {
                     GameGenreChips(
                         genres = game.genres,
-                        onGenreClick = { genre ->
-                            // позже навигация в поиск
-                        },
+                        onGenreClick = onGenreClick,
                         modifier = Modifier.padding(horizontal = 20.dp)
                     )
                 }
@@ -215,7 +217,7 @@ fun DetailsScreen(
                         developers = game.developers,
                         publishers = game.publishers,
                         ageRating = game.ageRating,
-                        playtime = game.playtime,
+                        timeToBeat = game.timeToBeat,
                         onDeveloperClick = onDeveloperClick,
                         onPublisherClick = onPublisherClick,
                         onAgeRatingClick = onAgeRatingClick,
@@ -227,16 +229,17 @@ fun DetailsScreen(
             }
             if (showSaveDialog) {
                 SaveGameDialog(
-                    defaultHours = game.playtime,
+                    timeToBeat = game.timeToBeat,
                     onDismissRequest = {
                         showSaveDialog = false
                     },
-                    onConfirm = { status, userRating, hoursPlayed ->
+                    onConfirm = { status, userRating, completionStyle, hoursPlayed ->
                         showSaveDialog = false
 
                         onSaveConfirm(
                             status,
                             userRating,
+                            completionStyle,
                             hoursPlayed
                         )
                     }
@@ -260,11 +263,12 @@ fun DetailsScreen(
 }
 @Composable
 private fun SaveGameDialog(
-    defaultHours: Int,
+    timeToBeat: GameTimeToBeatUiModel,
     onDismissRequest: () -> Unit,
     onConfirm: (
         status: GameStatus,
         userRating: Int?,
+        completionStyle: CompletionStyle?,
         hoursPlayed: Int
     ) -> Unit
 ) {
@@ -276,13 +280,12 @@ private fun SaveGameDialog(
         mutableStateOf("")
     }
 
-    var hoursText by rememberSaveable(defaultHours) {
-        mutableStateOf(
-            defaultHours
-                .takeIf { it > 0 }
-                ?.toString()
-                .orEmpty()
-        )
+    var completionStyle by rememberSaveable {
+        mutableStateOf<CompletionStyle?>(null)
+    }
+
+    var hoursText by rememberSaveable {
+        mutableStateOf("")
     }
 
     val userRating = ratingText.toIntOrNull()
@@ -423,6 +426,32 @@ private fun SaveGameDialog(
                 modifier = Modifier.fillMaxWidth()
             )
 
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "How did you play?",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                CompletionStyle.entries.forEach { style ->
+                    val estimate = timeToBeat.secondsFor(style)
+                    FilterChip(
+                        selected = completionStyle == style,
+                        onClick = {
+                            completionStyle = style
+                            estimate?.toHours()?.let { hours ->
+                                hoursText = hours.toString()
+                            }
+                        },
+                        label = {
+                            Text(
+                                style.toDisplayName() +
+                                    (estimate?.let { " · ${it.toHours()} h" } ?: "")
+                            )
+                        }
+                    )
+                }
+            }
+
             OutlinedTextField(
                 value = hoursText,
                 onValueChange = { newValue ->
@@ -438,8 +467,11 @@ private fun SaveGameDialog(
                 },
                 supportingText = {
                     Text(
-                        text = if (defaultHours > 0) {
-                            "Suggested from RAWG: $defaultHours h"
+                        text = completionStyle
+                            ?.let(timeToBeat::secondsFor)
+                            ?.let { "IGDB estimate: ${it.toHours()} h" }
+                            ?: if (timeToBeat.normallySeconds != null) {
+                            "IGDB normal estimate: ${timeToBeat.normallySeconds.toHours()} h"
                         } else {
                             "Enter 0 if you haven't played yet"
                         },
@@ -474,6 +506,7 @@ private fun SaveGameDialog(
                         onConfirm(
                             selectedStatus,
                             userRating,
+                            completionStyle,
                             hoursPlayed
                         )
                     },
@@ -485,6 +518,20 @@ private fun SaveGameDialog(
         }
     }
 }
+
+private fun CompletionStyle.toDisplayName(): String = when (this) {
+    CompletionStyle.RUSHED -> "Rushed"
+    CompletionStyle.NORMAL -> "Normal"
+    CompletionStyle.COMPLETIONIST -> "Completionist"
+}
+
+private fun GameTimeToBeatUiModel.secondsFor(style: CompletionStyle): Int? = when (style) {
+    CompletionStyle.RUSHED -> hastilySeconds
+    CompletionStyle.NORMAL -> normallySeconds
+    CompletionStyle.COMPLETIONIST -> completelySeconds
+}
+
+private fun Int.toHours(): Int = ((this + 1_800) / 3_600).coerceAtLeast(0)
 
 private fun GameStatus.toDisplayName(): String {
     return when (this) {
@@ -841,27 +888,27 @@ fun GameMetadataRow(
         VerticalDivider(
             modifier = Modifier.height(26.dp)
         )
-        if (game.metacritic != null) {
+        if (game.criticRating != null) {
             Icon(
-                painter = painterResource(R.drawable.metacritic),
+                imageVector = Icons.Default.VideogameAsset,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.size(22.dp)
             )
             Text(
-                text = game.metacritic.toString(),
+                text = game.criticRating.toString(),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Text(
-                text = "Metacritic",
+                text = "Critics",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        if (game.rating > 0.0) {
+        if (game.communityRating > 0.0) {
             Icon(
                 imageVector = Icons.Default.Star,
                 contentDescription = null,
@@ -870,14 +917,14 @@ fun GameMetadataRow(
             )
 
             Text(
-                text = "%.1f".format(game.rating),
+                text = "%.0f".format(game.communityRating),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Text(
-                text = "RAWG",
+                text = "IGDB users",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -1101,7 +1148,7 @@ fun GameAdditionalInfo(
     developers: List<GameCompanyUiModel>,
     publishers: List<GameCompanyUiModel>,
     ageRating: GameAgeRatingUiModel?,
-    playtime: Int,
+    timeToBeat: GameTimeToBeatUiModel,
     onDeveloperClick: (GameCompanyUiModel) -> Unit,
     onPublisherClick: (GameCompanyUiModel) -> Unit,
     onAgeRatingClick: (GameAgeRatingUiModel) -> Unit,
@@ -1174,12 +1221,8 @@ fun GameAdditionalInfo(
         GameInfoDivider()
 
         GameInfoRow(
-            title = "Playtime",
-            value = if (playtime > 0) {
-                "$playtime h Average"
-            } else {
-                "No data"
-            },
+            title = "Time to beat",
+            value = timeToBeat.toDisplayText(),
             icon = Icons.Default.AccessTime,
             onClick = null
         )
@@ -1215,6 +1258,14 @@ fun GameAdditionalInfo(
             null -> Unit
         }
     }
+}
+
+private fun GameTimeToBeatUiModel.toDisplayText(): String {
+    return listOfNotNull(
+        hastilySeconds?.let { "Rushed ${it.toHours()} h" },
+        normallySeconds?.let { "Normal ${it.toHours()} h" },
+        completelySeconds?.let { "100% ${it.toHours()} h" }
+    ).joinToString(" · ").ifBlank { "No data" }
 }
 
 @Composable
@@ -1401,9 +1452,10 @@ private fun DetailsScreenDarkPreview() {
             onRetryClick = {},
             modifier = Modifier,
             onDeveloperClick = {},
+            onGenreClick = {},
             onAgeRatingClick = {},
             onPublisherClick = {},
-            onSaveConfirm = { _, _, _ -> },
+            onSaveConfirm = { _, _, _, _ -> },
             onDeleteConfirm = {}
         )
     }
@@ -1427,10 +1479,11 @@ private fun DetailsScreenLightPreview() {
             onBackClick = {},
             onRetryClick = {},
             onDeveloperClick = {},
+            onGenreClick = {},
             modifier = Modifier,
             onAgeRatingClick = {},
             onPublisherClick = {},
-            onSaveConfirm = { _, _, _ -> },
+            onSaveConfirm = { _, _, _, _ -> },
             onDeleteConfirm = {}
         )
     }
@@ -1446,8 +1499,8 @@ private val previewGameDetails = GameDetailsUiModel(
         an all-new, action-packed, endlessly replayable experience.
     """.trimIndent(),
     releaseDate = "2025-09-25",
-    rating = 4.7,
-    metacritic = 92,
+    communityRating = 94.0,
+    criticRating = 92,
     genres = listOf(
         GameTagUiModel(1, "Action", "action"),
         GameTagUiModel(2, "RPG", "role-playing-games-rpg"),
@@ -1482,15 +1535,18 @@ private val previewGameDetails = GameDetailsUiModel(
         )
     ),
     screenshots = listOf(
-        "https://media.rawg.io/media/screenshots/example1.jpg",
-        "https://media.rawg.io/media/screenshots/example2.jpg",
-        "https://media.rawg.io/media/screenshots/example3.jpg",
-        "https://media.rawg.io/media/screenshots/example4.jpg"
+        "https://images.igdb.com/igdb/image/upload/t_1080p/example1.jpg",
+        "https://images.igdb.com/igdb/image/upload/t_1080p/example2.jpg"
     ),
     isSaved = false,
     ageRating = null,
 
-    playtime = 24,
+    timeToBeat = GameTimeToBeatUiModel(
+        hastilySeconds = 54_000,
+        normallySeconds = 86_400,
+        completelySeconds = 144_000,
+        submissionsCount = 120
+    ),
 )
 @Preview(
     name = "Details Error",
@@ -1503,15 +1559,16 @@ private fun DetailsErrorPreview() {
     GameStTheme(darkTheme = true) {
         DetailsScreen(
             uiState = GameDetailsUiState.Error(
-                message = "RAWG is temporarily unavailable. Please try again later."
+                message = "GameShelf is temporarily unavailable. Please try again later."
             ),
             onBackClick = {},
             onRetryClick = {},
             modifier = Modifier,
             onDeveloperClick = {},
+            onGenreClick = {},
             onAgeRatingClick = {},
             onPublisherClick = { },
-            onSaveConfirm = { _, _, _ -> },
+            onSaveConfirm = { _, _, _, _ -> },
             onDeleteConfirm = {}
         )
     }
@@ -1604,9 +1661,11 @@ private fun SaveGameDialogDarkPreview() {
                 .background(MaterialTheme.colorScheme.background)
         ) {
             SaveGameDialog(
-                defaultHours = 24,
+                timeToBeat = GameTimeToBeatUiModel(
+                    normallySeconds = 86_400
+                ),
                 onDismissRequest = {},
-                onConfirm = { _, _, _ -> }
+                onConfirm = { _, _, _, _ -> }
             )
         }
     }

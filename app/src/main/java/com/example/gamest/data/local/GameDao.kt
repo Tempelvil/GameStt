@@ -128,6 +128,7 @@ interface GameDao {
     UPDATE saved_games
     SET status = :status,
         userRating = :userRating,
+        completionStyle = :completionStyle,
         hoursPlayed = :hoursPlayed,
         updatedAt = :updatedAt
     WHERE id = :gameId
@@ -137,6 +138,7 @@ interface GameDao {
         gameId: Int,
         status: GameStatus,
         userRating: Int?,
+        completionStyle: CompletionStyle?,
         hoursPlayed: Int,
         updatedAt: Long
     )

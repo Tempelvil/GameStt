@@ -1,6 +1,7 @@
 package com.example.gamest.data.repository
 
 import com.example.gamest.data.local.GameDao
+import com.example.gamest.data.local.CompletionStyle
 import com.example.gamest.data.local.GameEntity
 import com.example.gamest.data.local.GameSort
 import com.example.gamest.data.local.GameStatus
@@ -112,12 +113,14 @@ class DefaultLocalGamesRepository(
         gameId: Int,
         status: GameStatus,
         userRating: Int?,
+        completionStyle: CompletionStyle?,
         hoursPlayed: Int
     ) {
         gameDao.updatePersonalData(
             gameId = gameId,
             status = status,
             userRating = userRating,
+            completionStyle = completionStyle,
             hoursPlayed = hoursPlayed,
             updatedAt = System.currentTimeMillis()
         )

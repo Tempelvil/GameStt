@@ -15,6 +15,7 @@ import com.example.gamest.data.repository.LocalGamesRepository
 import com.example.gamest.model.GameFilter
 import com.example.gamest.model.GameUiModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -44,7 +45,8 @@ class SearchViewModel(
         }
     }
 
-    private var searchJob: Job?=null
+    private var searchJob: Job? = null
+    private var loadJob: Job? = null
 
     fun loadGenres() {
         if (
@@ -77,7 +79,10 @@ class SearchViewModel(
         }
     }
     private fun loadGames() {
-        viewModelScope.launch {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
+            val query = uiState.searchQuery
+            val filter = uiState.selectedFilter
             uiState = uiState.copy(
                 isLoading = true,
                 isLoadingMore = false,
@@ -87,24 +92,24 @@ class SearchViewModel(
             )
 
             try {
-                val games = repository.getGames(
-                    searchQuery = uiState.searchQuery,
-                    filter = uiState.selectedFilter,
+                val page = repository.getGames(
+                    searchQuery = query,
+                    filter = filter,
                     page = 1
                 )
 
                 uiState = uiState.copy(
-                    games = games.withSavedState(savedGameIds),
+                    games = page.games.withSavedState(savedGameIds),
                     isLoading = false,
                     page = 1,
-                    canLoadMore = games.isNotEmpty()
+                    canLoadMore = page.hasMore
                 )
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                e.printStackTrace()
-
                 uiState = uiState.copy(
                     isLoading = false,
-                    errorMessage = "${e::class.simpleName}: ${e.message}"
+                    errorMessage = e.toUserMessage()
                 )
             }
         }
@@ -124,7 +129,7 @@ class SearchViewModel(
             )
 
             try {
-                val newGames = repository.getGames(
+                val page = repository.getGames(
                     searchQuery = uiState.searchQuery,
                     filter = uiState.selectedFilter,
                     page = nextPage
@@ -133,18 +138,18 @@ class SearchViewModel(
                 uiState = uiState.copy(
                     games = (
                         uiState.games +
-                            newGames.withSavedState(savedGameIds)
+                            page.games.withSavedState(savedGameIds)
                         ),
                     isLoadingMore = false,
                     page = nextPage,
-                    canLoadMore = newGames.isNotEmpty()
+                    canLoadMore = page.hasMore
                 )
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                e.printStackTrace()
-
                 uiState = uiState.copy(
                     isLoadingMore = false,
-                    errorMessage = "${e::class.simpleName}: ${e.message}"
+                    errorMessage = e.toUserMessage()
                 )
             }
         }
@@ -200,6 +205,11 @@ class SearchViewModel(
         }
     }
 
+}
+
+private fun Exception.toUserMessage(): String {
+    return message?.takeIf(String::isNotBlank)
+        ?: "Unable to load games. Check your connection and try again."
 }
 
 private fun List<GameUiModel>.withSavedState(

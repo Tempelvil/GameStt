@@ -1,6 +1,7 @@
 package com.example.gamest.data.mapper
 
 import com.example.gamest.data.local.GameEntity
+import com.example.gamest.data.local.CompletionStyle
 import com.example.gamest.data.local.GameStatus
 import com.example.gamest.data.local.StoredAgeRating
 import com.example.gamest.data.local.StoredCompany
@@ -13,6 +14,7 @@ import com.example.gamest.model.GameTagUiModel
 fun GameDetailsUiModel.toGameEntity(
     status: GameStatus,
     userRating: Int?,
+    completionStyle: CompletionStyle?,
     hoursPlayed: Int
 ): GameEntity {
     return GameEntity(
@@ -22,9 +24,12 @@ fun GameDetailsUiModel.toGameEntity(
         description = description,
         releaseDate = releaseDate,
 
-        ratingRawg = rating,
-        metacritic = metacritic,
-        playtime = playtime,
+        communityRating = communityRating,
+        criticRating = criticRating,
+        hastilySeconds = timeToBeat.hastilySeconds,
+        normallySeconds = timeToBeat.normallySeconds,
+        completelySeconds = timeToBeat.completelySeconds,
+        timeToBeatSubmissions = timeToBeat.submissionsCount,
 
         genres = genres.map { genre ->
             StoredTag(
@@ -64,6 +69,7 @@ fun GameDetailsUiModel.toGameEntity(
 
         status = status,
         userRating = userRating,
+        completionStyle = completionStyle,
         hoursPlayed = hoursPlayed
     )
 }
@@ -76,9 +82,8 @@ fun GameEntity.toGameDetailsUiModel(): GameDetailsUiModel {
         description = description,
         releaseDate = releaseDate,
 
-        rating = ratingRawg,
-        metacritic = metacritic,
-        playtime = playtime,
+        communityRating = communityRating,
+        criticRating = criticRating,
 
         genres = genres.map { genre ->
             GameTagUiModel(
@@ -115,6 +120,13 @@ fun GameEntity.toGameDetailsUiModel(): GameDetailsUiModel {
                 slug = rating.slug
             )
         },
+
+        timeToBeat = com.example.gamest.model.GameTimeToBeatUiModel(
+            hastilySeconds = hastilySeconds,
+            normallySeconds = normallySeconds,
+            completelySeconds = completelySeconds,
+            submissionsCount = timeToBeatSubmissions
+        ),
 
         isSaved = true
     )

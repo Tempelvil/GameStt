@@ -13,9 +13,12 @@ data class GameEntity(
     val description: String,
     val releaseDate: String,
 
-    val ratingRawg: Double = 0.0,
-    val metacritic: Int?,
-    val playtime: Int,
+    val communityRating: Double = 0.0,
+    val criticRating: Int?,
+    val hastilySeconds: Int?,
+    val normallySeconds: Int?,
+    val completelySeconds: Int?,
+    val timeToBeatSubmissions: Int = 0,
 
     val genres: List<StoredTag>,
     val platforms: List<String>,
@@ -27,6 +30,7 @@ data class GameEntity(
     // Пользовательские данные
     val userRating: Int? = null,
     val status: GameStatus = GameStatus.PLAYING,
+    val completionStyle: CompletionStyle? = null,
     val hoursPlayed: Int = 0,
 
     val savedAt: Long = System.currentTimeMillis(),

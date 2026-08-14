@@ -7,7 +7,7 @@ import com.example.gamest.BuildConfig
 import com.example.gamest.data.local.GameDao
 import com.example.gamest.data.local.GameDatabase
 import com.example.gamest.data.local.preferences.SteamConnectionPreferences
-import com.example.gamest.data.network.RawgApiService
+import com.example.gamest.data.network.WorkerGamesApiService
 import com.example.gamest.data.network.steam.SteamApiService
 import com.example.gamest.data.repository.DefaultLocalGamesRepository
 import com.example.gamest.data.repository.DefaultSteamRepository
@@ -20,8 +20,6 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import java.util.concurrent.TimeUnit
-import com.example.gamest.data.offline.OfflineMode
-import com.example.gamest.data.offline.OfflineRawgApiService
 
 interface AppContainer {
     val gamesRepository: GamesRepository
@@ -42,7 +40,7 @@ class DefaultAppContainer(
             klass = GameDatabase::class.java,
             name = "games_database"
         )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
             .build()
     }
     override val localGamesRepository: LocalGamesRepository by lazy {
@@ -51,7 +49,14 @@ class DefaultAppContainer(
         )
     }
 
-    private val baseUrl = "https://api.rawg.io/api/"
+    private val isWorkerConfigured = BuildConfig.WORKER_BASE_URL.isNotBlank()
+
+    private val workerBaseUrl = BuildConfig.WORKER_BASE_URL
+        .trim()
+        .trimEnd('/')
+        .let { root ->
+            if (root.endsWith("/v1")) "$root/" else "$root/v1/"
+        }
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -63,47 +68,33 @@ class DefaultAppContainer(
         .writeTimeout(30, TimeUnit.SECONDS)
         .build()
 
-    private val retrofit = Retrofit.Builder()
-        .baseUrl(baseUrl)
+    private val workerRetrofit = Retrofit.Builder()
+        .baseUrl(workerBaseUrl)
         .client(okHttpClient)
         .addConverterFactory(
             json.asConverterFactory("application/json".toMediaType())
         )
         .build()
 
-    private val steamRetrofit = Retrofit.Builder()
-        .baseUrl("https://api.steampowered.com/")
-        .client(okHttpClient)
-        .addConverterFactory(
-            json.asConverterFactory("application/json".toMediaType())
-        )
-        .build()
-
-    private val rawgApiService: RawgApiService by lazy {
-
-        if (OfflineMode.enabled) {
-            OfflineRawgApiService()
-        } else {
-            retrofit.create(RawgApiService::class.java)
-        }
+    private val workerGamesApiService: WorkerGamesApiService by lazy {
+        workerRetrofit.create(WorkerGamesApiService::class.java)
     }
 
 
     override val gamesRepository: GamesRepository by lazy {
         GamesRepository(
-            apiService = rawgApiService,
-            apiKey = BuildConfig.RAWG_API_KEY
+            apiService = workerGamesApiService,
+            isWorkerConfigured = isWorkerConfigured
         )
     }
 
     private val steamApiService: SteamApiService by lazy {
-        steamRetrofit.create(SteamApiService::class.java)
+        workerRetrofit.create(SteamApiService::class.java)
     }
 
     override val steamRepository: SteamRepository by lazy {
         DefaultSteamRepository(
             apiService = steamApiService,
-            apiKey = BuildConfig.STEAM_API_KEY,
             steamGameDao = gameDatabase.steamGameDao()
         )
     }
@@ -189,6 +180,42 @@ class DefaultAppContainer(
                     """
                     CREATE INDEX IF NOT EXISTS index_steam_playtime_deltas_steamId_appId
                     ON steam_playtime_deltas(steamId, appId)
+                    """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP TABLE IF EXISTS saved_games")
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS saved_games (
+                        id INTEGER NOT NULL,
+                        title TEXT NOT NULL,
+                        imageUrl TEXT,
+                        description TEXT NOT NULL,
+                        releaseDate TEXT NOT NULL,
+                        communityRating REAL NOT NULL,
+                        criticRating INTEGER,
+                        hastilySeconds INTEGER,
+                        normallySeconds INTEGER,
+                        completelySeconds INTEGER,
+                        timeToBeatSubmissions INTEGER NOT NULL,
+                        genres TEXT NOT NULL,
+                        platforms TEXT NOT NULL,
+                        developers TEXT NOT NULL,
+                        publishers TEXT NOT NULL,
+                        screenshots TEXT NOT NULL,
+                        ageRating TEXT,
+                        userRating INTEGER,
+                        status TEXT NOT NULL,
+                        completionStyle TEXT,
+                        hoursPlayed INTEGER NOT NULL,
+                        savedAt INTEGER NOT NULL,
+                        updatedAt INTEGER NOT NULL,
+                        PRIMARY KEY(id)
+                    )
                     """.trimIndent()
                 )
             }

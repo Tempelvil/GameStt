@@ -11,6 +11,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.gamest.GameStApplication
 import com.example.gamest.data.local.GameStatus
+import com.example.gamest.data.local.CompletionStyle
 import com.example.gamest.data.mapper.toGameDetailsUiModel
 import com.example.gamest.data.mapper.toGameEntity
 import com.example.gamest.data.repository.GamesRepository
@@ -93,7 +94,7 @@ class GameDetailsViewModel(
             )
         } catch (e: IOException) {
             GameDetailsUiState.Error(
-                message = "Unable to connect to RAWG. Check your internet connection and try again."
+                message = "Unable to connect to GameShelf. Check your internet connection and try again."
             )
         } catch (e: Exception) {
             GameDetailsUiState.Error(
@@ -105,6 +106,7 @@ class GameDetailsViewModel(
     fun saveGame(
         status: GameStatus,
         userRating: Int?,
+        completionStyle: CompletionStyle?,
         hoursPlayed: Int
     ) {
         val game = currentGame ?: return
@@ -114,6 +116,7 @@ class GameDetailsViewModel(
                 game.toGameEntity(
                     status = status,
                     userRating = userRating,
+                    completionStyle = completionStyle,
                     hoursPlayed = hoursPlayed
                 )
             )
@@ -136,13 +139,13 @@ class GameDetailsViewModel(
 
     private fun getHttpErrorMessage(code: Int): String {
         return when (code) {
-            401 -> "The RAWG API key is invalid."
-            403 -> "Access to the RAWG API is denied."
+            401 -> "The GameShelf service could not authenticate with IGDB."
+            403 -> "Access to the GameShelf service is denied."
             404 -> "Game information was not found."
-            429 -> "The RAWG request limit has been exceeded."
+            429 -> "The GameShelf request limit has been exceeded."
 
             500, 502, 503, 504, 522 ->
-                "RAWG is temporarily unavailable. Please try again later."
+                "GameShelf is temporarily unavailable. Please try again later."
 
             else -> "Server error. HTTP code: $code"
         }

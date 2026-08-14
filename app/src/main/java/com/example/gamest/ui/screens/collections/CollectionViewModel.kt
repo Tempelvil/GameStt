@@ -7,6 +7,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.gamest.GameStApplication
 import com.example.gamest.data.local.GameStatus
+import com.example.gamest.data.local.CompletionStyle
 import com.example.gamest.data.repository.LocalGamesRepository
 import com.example.gamest.ui.screens.collections.CollectionFilter
 import com.example.gamest.ui.screens.collections.CollectionUiState
@@ -86,6 +87,7 @@ class CollectionViewModel(
         gameId: Int,
         status: GameStatus,
         userRating: Int?,
+        completionStyle: CompletionStyle?,
         hoursPlayed: Int
     ) {
         viewModelScope.launch {
@@ -93,6 +95,7 @@ class CollectionViewModel(
                 gameId = gameId,
                 status = status,
                 userRating = userRating,
+                completionStyle = completionStyle,
                 hoursPlayed = hoursPlayed
             )
         }

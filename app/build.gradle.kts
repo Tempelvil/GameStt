@@ -14,8 +14,8 @@ val localProperties = Properties().apply {
     load(rootProject.file("local.properties").inputStream())
 }
 
-val rawgApiKey = localProperties.getProperty("RAWG_API_KEY") ?: ""
-val steamApiKey = localProperties.getProperty("STEAM_API_KEY") ?: ""
+val workerBaseUrl = localProperties.getProperty("WORKER_BASE_URL")
+    ?: "https://gameshelf-api.stepanstepanlol123.workers.dev/"
 
 android {
     namespace = "com.example.gamest"
@@ -35,14 +35,8 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField(
             "String",
-            "RAWG_API_KEY",
-            "\"$rawgApiKey\""
-
-        )
-        buildConfigField(
-             "String",
-             "STEAM_API_KEY",
-             "\"$steamApiKey\""
+            "WORKER_BASE_URL",
+            "\"$workerBaseUrl\""
         )
     }
 
@@ -65,6 +59,10 @@ android {
     }
 
 
+}
+
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 dependencies {

@@ -183,11 +183,12 @@ fun GameShelfApp(
                         )
                     },
 
-                    onEditConfirm = { gameId, status, userRating, hoursPlayed ->
+                    onEditConfirm = { gameId, status, userRating, completionStyle, hoursPlayed ->
                         collectionViewModel.updateGame(
                             gameId = gameId,
                             status = status,
                             userRating = userRating,
+                            completionStyle = completionStyle,
                             hoursPlayed = hoursPlayed
                         )
                     },
@@ -311,6 +312,21 @@ fun GameShelfApp(
                                 launchSingleTop = true
                             }
                         },
+                        onGenreClick = { genre ->
+                            searchViewModel.applyFilter(
+                                GameFilter.Genres(
+                                    id = genre.id,
+                                    name = genre.name,
+                                    slug = genre.slug
+                                )
+                            )
+                            navController.navigate(GameDestination.SEARCH) {
+                                popUpTo(GameDestination.SEARCH) {
+                                    inclusive = false
+                                }
+                                launchSingleTop = true
+                            }
+                        },
                         onAgeRatingClick = {ageRating ->
                             searchViewModel.applyFilter(
                                 GameFilter.AgeRating(
@@ -325,10 +341,11 @@ fun GameShelfApp(
                                 launchSingleTop = true
                             }
                         },
-                        onSaveConfirm = { status, userRating, hoursPlayed ->
+                        onSaveConfirm = { status, userRating, completionStyle, hoursPlayed ->
                             detailsViewModel.saveGame(
                                 status = status,
                                 userRating = userRating,
+                                completionStyle = completionStyle,
                                 hoursPlayed = hoursPlayed
                             )
                         },

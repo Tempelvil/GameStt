@@ -136,8 +136,11 @@ class StatisticsCalculatorTest {
             imageUrl = null,
             description = "",
             releaseDate = "",
-            metacritic = null,
-            playtime = 0,
+            communityRating = 0.0,
+            criticRating = null,
+            hastilySeconds = null,
+            normallySeconds = null,
+            completelySeconds = null,
             genres = genres.mapIndexed { index, name ->
                 StoredTag(
                     id = index,
