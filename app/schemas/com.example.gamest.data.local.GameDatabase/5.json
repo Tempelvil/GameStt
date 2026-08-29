@@ -1,0 +1,442 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 5,
+    "identityHash": "829cf19bb68c73b28c7676ba3736605d",
+    "entities": [
+      {
+        "tableName": "saved_games",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `title` TEXT NOT NULL, `imageUrl` TEXT, `description` TEXT NOT NULL, `releaseDate` TEXT NOT NULL, `communityRating` REAL NOT NULL, `criticRating` INTEGER, `hastilySeconds` INTEGER, `normallySeconds` INTEGER, `completelySeconds` INTEGER, `timeToBeatSubmissions` INTEGER NOT NULL, `genres` TEXT NOT NULL, `platforms` TEXT NOT NULL, `developers` TEXT NOT NULL, `publishers` TEXT NOT NULL, `screenshots` TEXT NOT NULL, `ageRating` TEXT, `userRating` INTEGER, `status` TEXT NOT NULL, `completionStyle` TEXT, `hoursPlayed` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "imageUrl",
+            "columnName": "imageUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "releaseDate",
+            "columnName": "releaseDate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "communityRating",
+            "columnName": "communityRating",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "criticRating",
+            "columnName": "criticRating",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "hastilySeconds",
+            "columnName": "hastilySeconds",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "normallySeconds",
+            "columnName": "normallySeconds",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "completelySeconds",
+            "columnName": "completelySeconds",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "timeToBeatSubmissions",
+            "columnName": "timeToBeatSubmissions",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "genres",
+            "columnName": "genres",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "platforms",
+            "columnName": "platforms",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "developers",
+            "columnName": "developers",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "publishers",
+            "columnName": "publishers",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "screenshots",
+            "columnName": "screenshots",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ageRating",
+            "columnName": "ageRating",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "userRating",
+            "columnName": "userRating",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "completionStyle",
+            "columnName": "completionStyle",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "hoursPlayed",
+            "columnName": "hoursPlayed",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "savedAt",
+            "columnName": "savedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "steam_games",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`steamId` TEXT NOT NULL, `appId` INTEGER NOT NULL, `name` TEXT NOT NULL, `iconHash` TEXT, `playtimeForeverMinutes` INTEGER NOT NULL, `playtimeTwoWeeksMinutes` INTEGER, `lastPlayedAt` INTEGER, `lastSyncedAt` INTEGER NOT NULL, PRIMARY KEY(`steamId`, `appId`))",
+        "fields": [
+          {
+            "fieldPath": "steamId",
+            "columnName": "steamId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "appId",
+            "columnName": "appId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "iconHash",
+            "columnName": "iconHash",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "playtimeForeverMinutes",
+            "columnName": "playtimeForeverMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "playtimeTwoWeeksMinutes",
+            "columnName": "playtimeTwoWeeksMinutes",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastPlayedAt",
+            "columnName": "lastPlayedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastSyncedAt",
+            "columnName": "lastSyncedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "steamId",
+            "appId"
+          ]
+        }
+      },
+      {
+        "tableName": "steam_profiles",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`steamId` TEXT NOT NULL, `profileUrl` TEXT NOT NULL, `personaName` TEXT NOT NULL, `avatarUrl` TEXT, `status` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `lastSyncAt` INTEGER, PRIMARY KEY(`steamId`))",
+        "fields": [
+          {
+            "fieldPath": "steamId",
+            "columnName": "steamId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "profileUrl",
+            "columnName": "profileUrl",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "personaName",
+            "columnName": "personaName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "avatarUrl",
+            "columnName": "avatarUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastSyncAt",
+            "columnName": "lastSyncAt",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "steamId"
+          ]
+        }
+      },
+      {
+        "tableName": "steam_syncs",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `steamId` TEXT NOT NULL, `syncedAt` INTEGER NOT NULL, `totalPlaytimeMinutes` INTEGER NOT NULL, `recentTwoWeeksMinutes` INTEGER NOT NULL, `deltaMinutes` INTEGER NOT NULL, `isUntrackedPeriod` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "steamId",
+            "columnName": "steamId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "syncedAt",
+            "columnName": "syncedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "totalPlaytimeMinutes",
+            "columnName": "totalPlaytimeMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recentTwoWeeksMinutes",
+            "columnName": "recentTwoWeeksMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deltaMinutes",
+            "columnName": "deltaMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isUntrackedPeriod",
+            "columnName": "isUntrackedPeriod",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_steam_syncs_steamId_syncedAt",
+            "unique": false,
+            "columnNames": [
+              "steamId",
+              "syncedAt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_steam_syncs_steamId_syncedAt` ON `${TABLE_NAME}` (`steamId`, `syncedAt`)"
+          }
+        ]
+      },
+      {
+        "tableName": "steam_playtime_deltas",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `steamId` TEXT NOT NULL, `appId` INTEGER NOT NULL, `recordedAt` INTEGER NOT NULL, `deltaMinutes` INTEGER NOT NULL, `totalMinutesAfterSync` INTEGER NOT NULL, `isUntrackedPeriod` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "steamId",
+            "columnName": "steamId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "appId",
+            "columnName": "appId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recordedAt",
+            "columnName": "recordedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deltaMinutes",
+            "columnName": "deltaMinutes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "totalMinutesAfterSync",
+            "columnName": "totalMinutesAfterSync",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isUntrackedPeriod",
+            "columnName": "isUntrackedPeriod",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_steam_playtime_deltas_steamId_recordedAt",
+            "unique": false,
+            "columnNames": [
+              "steamId",
+              "recordedAt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_steam_playtime_deltas_steamId_recordedAt` ON `${TABLE_NAME}` (`steamId`, `recordedAt`)"
+          },
+          {
+            "name": "index_steam_playtime_deltas_steamId_appId",
+            "unique": false,
+            "columnNames": [
+              "steamId",
+              "appId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_steam_playtime_deltas_steamId_appId` ON `${TABLE_NAME}` (`steamId`, `appId`)"
+          }
+        ]
+      },
+      {
+        "tableName": "steam_igdb_mappings",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`steamAppId` INTEGER NOT NULL, `igdbGameId` INTEGER, `status` TEXT NOT NULL, `checkedAt` INTEGER NOT NULL, PRIMARY KEY(`steamAppId`))",
+        "fields": [
+          {
+            "fieldPath": "steamAppId",
+            "columnName": "steamAppId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "igdbGameId",
+            "columnName": "igdbGameId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "checkedAt",
+            "columnName": "checkedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "steamAppId"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '829cf19bb68c73b28c7676ba3736605d')"
+    ]
+  }
+}
