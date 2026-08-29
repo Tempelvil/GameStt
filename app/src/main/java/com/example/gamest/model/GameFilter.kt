@@ -4,6 +4,7 @@ sealed class GameFilter(val title: String) {
     open val sort: String = "users"
     open val genreId: Int? = null
     open val platformId: Int? = null
+    open val platformIds: List<Int> = emptyList()
     open val developerId: Int? = null
     open val publisherId: Int? = null
     open val ageRatingCategoryId: Int? = null
@@ -46,6 +47,15 @@ sealed class GameFilter(val title: String) {
         val name: String
     ): GameFilter(name) {
         override val publisherId: Int = id
+    }
+
+    data class Platform(
+        val ids: List<Int>,
+        val name: String
+    ) : GameFilter(name) {
+        constructor(id: Int, name: String) : this(listOf(id), name)
+
+        override val platformIds: List<Int> = ids
     }
 
     data class AgeRating(

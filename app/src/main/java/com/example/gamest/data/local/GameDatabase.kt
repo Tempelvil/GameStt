@@ -10,9 +10,10 @@ import androidx.room.TypeConverters
         SteamGameEntity::class,
         SteamProfileEntity::class,
         SteamSyncEntity::class,
-        SteamPlaytimeDeltaEntity::class
+        SteamPlaytimeDeltaEntity::class,
+        SteamIgdbMappingEntity::class
     ],
-    version = 4,
+    version = 6,
     exportSchema = true
 )
 @TypeConverters(GameConverters::class)

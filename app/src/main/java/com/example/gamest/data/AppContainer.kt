@@ -40,7 +40,13 @@ class DefaultAppContainer(
             klass = GameDatabase::class.java,
             name = "games_database"
         )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+            .addMigrations(
+                MIGRATION_1_2,
+                MIGRATION_2_3,
+                MIGRATION_3_4,
+                MIGRATION_4_5,
+                MIGRATION_5_6
+            )
             .build()
     }
     override val localGamesRepository: LocalGamesRepository by lazy {
@@ -216,6 +222,32 @@ class DefaultAppContainer(
                         updatedAt INTEGER NOT NULL,
                         PRIMARY KEY(id)
                     )
+                    """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS steam_igdb_mappings (
+                        steamAppId INTEGER NOT NULL PRIMARY KEY,
+                        igdbGameId INTEGER,
+                        status TEXT NOT NULL,
+                        checkedAt INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    ALTER TABLE saved_games
+                    ADD COLUMN platformDetails TEXT NOT NULL DEFAULT '[]'
                     """.trimIndent()
                 )
             }

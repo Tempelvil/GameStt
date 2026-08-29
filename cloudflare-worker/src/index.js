@@ -6,9 +6,13 @@ const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 50;
 const TOP_GAMES_LIMIT = 100;
 const TOP_MINIMUM_USER_RATINGS = 500;
+const PRIORITY_USER_RATINGS = 50;
 const TOKEN_REFRESH_MARGIN_SECONDS = 300;
 const TOKEN_CACHE_KEY = new Request(
   "https://gameshelf-worker.internal/oauth/igdb-token"
+);
+const STEAM_SOURCE_CACHE_KEY = new Request(
+  "https://gameshelf-worker.internal/igdb/steam-source"
 );
 
 const LIST_GAME_FIELDS = [
@@ -116,6 +120,12 @@ export default {
         return await handleSteamPlayerSummaries(url, env);
       }
 
+      if (path === "/steam/game-match") {
+        return await cachedPublicResponse(request, context, 86400, () =>
+          handleSteamGameMatch(url, env)
+        );
+      }
+
       if (path === "/steam/owned-games") {
         return await handleSteamOwnedGames(url, env);
       }
@@ -191,14 +201,16 @@ async function handleGames(url, env) {
     ? Math.min(limit, TOP_GAMES_LIMIT - offset)
     : limit;
 
-  const filters = ["version_parent = null", "cover != null"];
+  const filters = [];
 
   if (isTopGames) {
     filters.push("parent_game = null");
+    filters.push("cover != null");
   }
 
   appendReferenceFilter(filters, url, "genreId", "genres");
   appendReferenceFilter(filters, url, "platformId", "platforms");
+  appendReferenceListFilter(filters, url, "platformIds", "platforms");
   appendReferenceFilter(
     filters,
     url,
@@ -227,13 +239,15 @@ async function handleGames(url, env) {
   if (!search && (sort === "users" || sort === "top")) {
     const minimumRatings = parseBoundedInteger(
       url.searchParams.get("minimumRatings"),
-      isTopGames ? TOP_MINIMUM_USER_RATINGS : 50,
+      isTopGames ? TOP_MINIMUM_USER_RATINGS : 0,
       0,
       1000000,
       "minimumRatings"
     );
     filters.push("rating != null");
-    filters.push(`rating_count >= ${minimumRatings}`);
+    if (minimumRatings > 0) {
+      filters.push(`rating_count >= ${minimumRatings}`);
+    }
   }
 
   if (!search && sort === "critics") {
@@ -248,12 +262,32 @@ async function handleGames(url, env) {
     filters.push(`aggregated_rating_count >= ${minimumCriticRatings}`);
   }
 
+  if (!search && sort === "users" && !isTopGames) {
+    const items = await getPrioritizedUserRatedGames(
+      env,
+      filters,
+      offset,
+      effectiveLimit
+    );
+    return jsonResponse({
+      items,
+      pagination: {
+        limit: effectiveLimit,
+        offset,
+        returned: items.length,
+        hasMore: items.length === effectiveLimit
+      }
+    });
+  }
+
   const queryParts = [];
   if (search) {
     queryParts.push(`search "${escapeApicalypseString(search)}";`);
   }
   queryParts.push(`fields ${LIST_GAME_FIELDS};`);
-  queryParts.push(`where ${filters.join(" & ")};`);
+  if (filters.length > 0) {
+    queryParts.push(`where ${filters.join(" & ")};`);
+  }
   if (sortStatement) {
     queryParts.push(sortStatement);
   }
@@ -378,6 +412,135 @@ async function handleSteamResolveVanity(url, env) {
     "/ISteamUser/ResolveVanityURL/v0001/",
     { vanityurl: vanityUrl, url_type: "1", format: "json" }
   );
+}
+
+async function getPrioritizedUserRatedGames(env, filters, offset, limit) {
+  const priorityFilters = [
+    ...filters,
+    `rating_count > ${PRIORITY_USER_RATINGS}`
+  ];
+  const priorityCountResponse = await igdbRequest(
+    env,
+    "games/count",
+    `where ${priorityFilters.join(" & ")};`
+  );
+  const priorityCount = Number(priorityCountResponse?.count) || 0;
+  const items = [];
+
+  if (offset < priorityCount) {
+    const priorityLimit = Math.min(limit, priorityCount - offset);
+    items.push(...await requestGameList(
+      env,
+      priorityFilters,
+      priorityLimit,
+      offset,
+      "sort rating desc;"
+    ));
+  }
+
+  const remaining = limit - items.length;
+  if (remaining > 0) {
+    const fallbackOffset = Math.max(0, offset - priorityCount);
+    const fallbackFilters = [
+      ...filters,
+      `rating_count <= ${PRIORITY_USER_RATINGS}`
+    ];
+    items.push(...await requestGameList(
+      env,
+      fallbackFilters,
+      remaining,
+      fallbackOffset,
+      "sort rating desc;"
+    ));
+  }
+
+  return items;
+}
+
+async function requestGameList(env, filters, limit, offset, sortStatement) {
+  const query = [
+    `fields ${LIST_GAME_FIELDS};`,
+    `where ${filters.join(" & ")};`,
+    sortStatement,
+    `limit ${limit};`,
+    `offset ${offset};`
+  ].join("\n");
+  return igdbRequest(env, "games", query);
+}
+
+async function handleSteamGameMatch(url, env) {
+  const appId = parsePositiveInteger(
+    url.searchParams.get("appId"),
+    "appId"
+  );
+  const steamSourceId = await getSteamExternalSourceId(env);
+  const externalGames = await igdbRequest(
+    env,
+    "external_games",
+    [
+      "fields uid,game;",
+      `where external_game_source = ${steamSourceId}` +
+        ` & uid = \"${appId}\";`,
+      "limit 20;"
+    ].join(" ")
+  );
+  const gameIds = [
+    ...new Set(
+      externalGames
+        .map((item) => item.game)
+        .filter((gameId) => Number.isSafeInteger(gameId) && gameId > 0)
+    )
+  ];
+
+  if (gameIds.length === 1) {
+    return jsonResponse({
+      steamAppId: appId,
+      igdbGameId: gameIds[0],
+      status: "exact"
+    });
+  }
+
+  return jsonResponse({
+    steamAppId: appId,
+    igdbGameId: null,
+    status: gameIds.length === 0 ? "unmatched" : "ambiguous"
+  });
+}
+
+async function getSteamExternalSourceId(env) {
+  const cache = caches.default;
+  const cachedResponse = await cache.match(STEAM_SOURCE_CACHE_KEY);
+  if (cachedResponse) {
+    const cached = await cachedResponse.json();
+    if (Number.isSafeInteger(cached.id) && cached.id > 0) {
+      return cached.id;
+    }
+  }
+
+  const sources = await igdbRequest(
+    env,
+    "external_game_sources",
+    'fields id,name; where name = "Steam"; limit 1;'
+  );
+  const sourceId = sources[0]?.id;
+  if (!Number.isSafeInteger(sourceId) || sourceId <= 0) {
+    throw new ApiError(
+      502,
+      "steam_source_not_found",
+      "IGDB did not return its Steam external source."
+    );
+  }
+
+  await cache.put(
+    STEAM_SOURCE_CACHE_KEY,
+    new Response(JSON.stringify({ id: sourceId }), {
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "public, max-age=86400"
+      }
+    })
+  );
+  return sourceId;
 }
 
 async function igdbRequest(env, endpoint, body, retryAuthentication = true) {
@@ -564,8 +727,26 @@ function appendReferenceFilter(filters, url, parameterName, fieldName) {
     parameterName
   );
   if (value !== null) {
-    filters.push(`${fieldName} = ${value}`);
+    filters.push(`${fieldName} = (${value})`);
   }
+}
+
+function appendReferenceListFilter(filters, url, parameterName, fieldName) {
+  const rawValue = url.searchParams.get(parameterName);
+  if (rawValue === null || rawValue === "") {
+    return;
+  }
+  const values = rawValue.split(",").map((value) =>
+    parsePositiveInteger(value.trim(), parameterName)
+  );
+  if (values.length > 20) {
+    throw new ApiError(
+      400,
+      "invalid_parameter",
+      `${parameterName} must contain no more than 20 IDs.`
+    );
+  }
+  filters.push(`${fieldName} = (${[...new Set(values)].join(",")})`);
 }
 
 function findMultiQueryResult(results, name) {

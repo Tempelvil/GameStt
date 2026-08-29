@@ -216,6 +216,118 @@ test("Steam key is added by the Worker and never accepted from Android", async (
   assert.equal(body.response.game_count, 0);
 });
 
+test("genre lists prioritize trusted ratings and then include the rest", async () => {
+  const gameQueries = [];
+  globalThis.fetch = async (request, init = {}) => {
+    const url = request instanceof Request ? request.url : String(request);
+    assert.match(init.body, /genres = \(36\)/);
+    assert.doesNotMatch(init.body, /cover != null/);
+    assert.doesNotMatch(init.body, /version_parent = null/);
+    if (url === "https://api.igdb.com/v4/games/count") {
+      assert.match(init.body, /rating_count > 50/);
+      return Response.json({ count: 1 });
+    }
+    assert.equal(url, "https://api.igdb.com/v4/games");
+    assert.match(init.body, /sort rating desc/);
+    gameQueries.push(init.body);
+    if (init.body.includes("rating_count > 50")) {
+      return Response.json([
+        { id: 1, name: "Established MOBA", rating: 75, rating_count: 100 }
+      ]);
+    }
+    assert.match(init.body, /rating_count <= 50/);
+    return Response.json([
+      { id: 2, name: "League of Legends", rating: 80, rating_count: 40 }
+    ]);
+  };
+
+  const response = await worker.fetch(
+    new Request(
+      "https://worker.example/v1/games?genreId=36&sort=users"
+    ),
+    {
+      IGDB_CLIENT_ID: "client-id",
+      ACCESS_TOKEN: "legacy-token"
+    },
+    createContext()
+  );
+
+  assert.equal(response.status, 200);
+  const body = await readJson(response);
+  assert.deepEqual(
+    body.items.map((game) => game.name),
+    ["Established MOBA", "League of Legends"]
+  );
+  assert.equal(gameQueries.length, 2);
+});
+
+test("platform families filter by every platform ID in the family", async () => {
+  globalThis.fetch = async (request, init = {}) => {
+    const url = request instanceof Request ? request.url : String(request);
+    assert.match(init.body, /platforms = \(11,12,49,169\)/);
+    if (url.endsWith("/games/count")) {
+      return Response.json({ count: 0 });
+    }
+    return Response.json([]);
+  };
+
+  const response = await worker.fetch(
+    new Request(
+      "https://worker.example/v1/games" +
+      "?platformIds=11,12,49,169&sort=users"
+    ),
+    {
+      IGDB_CLIENT_ID: "client-id",
+      ACCESS_TOKEN: "legacy-token"
+    },
+    createContext()
+  );
+
+  assert.equal(response.status, 200);
+});
+
+test("Steam app id is resolved through IGDB external games", async () => {
+  const requests = [];
+  globalThis.fetch = async (request, init = {}) => {
+    const url = request instanceof Request ? request.url : String(request);
+    requests.push({ url, body: init.body });
+
+    if (url === "https://api.igdb.com/v4/external_game_sources") {
+      assert.match(init.body, /name = "Steam"/);
+      return Response.json([{ id: 1, name: "Steam" }]);
+    }
+
+    if (url === "https://api.igdb.com/v4/external_games") {
+      assert.match(init.body, /external_game_source = 1/);
+      assert.match(init.body, /uid = "1245620"/);
+      return Response.json([{ uid: "1245620", game: 119133 }]);
+    }
+
+    throw new Error(`Unexpected fetch: ${url}`);
+  };
+
+  const context = createContext();
+  const response = await worker.fetch(
+    new Request(
+      "https://worker.example/v1/steam/game-match?appId=1245620"
+    ),
+    {
+      IGDB_CLIENT_ID: "client-id",
+      ACCESS_TOKEN: "legacy-token"
+    },
+    context
+  );
+
+  await Promise.all(context.pending);
+  assert.equal(response.status, 200);
+  assert.deepEqual(await readJson(response), {
+    steamAppId: 1245620,
+    igdbGameId: 119133,
+    status: "exact"
+  });
+  assert.equal(requests.length, 2);
+});
+
 test("invalid parameters are rejected before an upstream request", async () => {
   let fetchCalled = false;
   globalThis.fetch = async () => {

@@ -17,6 +17,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import com.example.gamest.model.GameFilter
 import com.example.gamest.ui.components.GameBottomBar
 import com.example.gamest.ui.components.GameTopBar
@@ -257,6 +259,19 @@ fun GameShelfApp(
                     onFilterClick = steamLibraryViewModel::selectFilter,
                     onSortClick = steamLibraryViewModel::selectSort,
                     onSyncClick = steamLibraryViewModel::sync,
+                    onGameClick = { appId ->
+                        val steamPlaytimeMinutes = steamLibraryUiState.games
+                            .firstOrNull { game -> game.appId == appId }
+                            ?.totalPlaytimeMinutes
+                        steamLibraryViewModel.openGame(appId) { igdbGameId ->
+                            navController.navigate(
+                                GameDestination.createDetailsRoute(
+                                    gameId = igdbGameId,
+                                    steamPlaytimeMinutes = steamPlaytimeMinutes
+                                )
+                            )
+                        }
+                    },
                     onAddProfileClick = {
                         steamConnectionViewModel.beginAddingProfile()
                         showSteamConnectionDialog = true
@@ -281,17 +296,31 @@ fun GameShelfApp(
                 )
             }
 
-            composable(GameDestination.DETAILS) {
+            composable(
+                route = GameDestination.DETAILS,
+                arguments = listOf(
+                    navArgument(GameDestination.DETAILS_ARGUMENT) {
+                        type = NavType.IntType
+                    },
+                    navArgument(GameDestination.STEAM_PLAYTIME_ARGUMENT) {
+                        type = NavType.LongType
+                        defaultValue = -1L
+                    }
+                )
+            ) {
                 backStackEntry->
                 val gameId = backStackEntry.arguments
-                    ?.getString(GameDestination.DETAILS_ARGUMENT)
-                    ?.toIntOrNull()
+                    ?.getInt(GameDestination.DETAILS_ARGUMENT)
+                val steamPlaytimeMinutes = backStackEntry.arguments
+                    ?.getLong(GameDestination.STEAM_PLAYTIME_ARGUMENT)
+                    ?.takeIf { minutes -> minutes >= 0 }
                 if(gameId!=null) {
                     val detailsViewModel: GameDetailsViewModel = viewModel(
                         factory = GameDetailsViewModel.factory(gameId)
                     )
                     DetailsScreen(
                         uiState = detailsViewModel.uiState,
+                        initialSteamPlaytimeMinutes = steamPlaytimeMinutes,
                         onBackClick = {
                             navController.popBackStack()
                         },
@@ -318,6 +347,20 @@ fun GameShelfApp(
                                     id = genre.id,
                                     name = genre.name,
                                     slug = genre.slug
+                                )
+                            )
+                            navController.navigate(GameDestination.SEARCH) {
+                                popUpTo(GameDestination.SEARCH) {
+                                    inclusive = false
+                                }
+                                launchSingleTop = true
+                            }
+                        },
+                        onPlatformClick = { platform ->
+                            searchViewModel.applyFilter(
+                                GameFilter.Platform(
+                                    ids = platform.platformIds,
+                                    name = platform.name
                                 )
                             )
                             navController.navigate(GameDestination.SEARCH) {

@@ -29,6 +29,11 @@ All routes work both with and without the `/v1` prefix. Android should use `/v1`
 - `GET /v1/steam/owned-games?steamId={id}`
 - `GET /v1/steam/recently-played?steamId={id}`
 - `GET /v1/steam/resolve-vanity?vanityUrl={name}`
+- `GET /v1/steam/game-match?appId={steamAppId}`
+
+`game-match` resolves a Steam App ID through IGDB `external_games`. An exact
+match contains `igdbGameId`; missing or non-unique matches return `unmatched`
+or `ambiguous` without guessing by title.
 
 ### Games parameters
 
@@ -41,7 +46,16 @@ All routes work both with and without the `/v1` prefix. Android should use `/v1`
 - `developerId`
 - `publisherId`
 - `ageRatingCategoryId`
-- `minimumRatings`: default 50 for `sort=users`
+- `minimumRatings`: optional; no minimum for regular filtered lists
+- `platformIds`: optional comma-separated platform IDs (used by PC, Xbox,
+  PlayStation, and Nintendo family filters)
+
+Regular user-rating lists are ordered in two groups: games with more than 50
+user ratings first, followed by every other game that has a user rating. Each
+group is ordered by rating descending. A missing cover does not remove a game
+from regular genre or platform results. Reference-array filters use IGDB's
+parenthesized list syntax (for example, `genres = (36)`), so games that belong
+to several genres are included as expected.
 - `minimumCriticRatings`: default 5 for `sort=critics`
 
 Examples:

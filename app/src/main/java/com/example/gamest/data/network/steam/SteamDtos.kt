@@ -72,3 +72,10 @@ data class SteamVanityPayloadDto(
     val success: Int = 0,
     val message: String? = null
 )
+
+@Serializable
+data class SteamGameMatchDto(
+    val steamAppId: Int,
+    val igdbGameId: Int? = null,
+    val status: String
+)

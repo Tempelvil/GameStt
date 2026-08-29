@@ -11,6 +11,7 @@ data class SteamLibraryUiState(
     val selectedSort: SteamLibrarySort = SteamLibrarySort.PLAYTIME,
     val lastSyncAt: Long? = null,
     val isSyncing: Boolean = false,
+    val openingGameAppId: Int? = null,
     val errorMessage: String? = null,
     val profiles: List<SteamProfileUiModel> = emptyList(),
     val activeSteamId: String? = null,

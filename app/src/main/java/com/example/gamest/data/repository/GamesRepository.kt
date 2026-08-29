@@ -9,6 +9,7 @@ import com.example.gamest.model.GameCompanyUiModel
 import com.example.gamest.model.GameDetailsUiModel
 import com.example.gamest.model.GameFilter
 import com.example.gamest.model.GamePage
+import com.example.gamest.model.GamePlatformUiModel
 import com.example.gamest.model.GameTagUiModel
 import com.example.gamest.model.GameTimeToBeatUiModel
 import com.example.gamest.model.GameUiModel
@@ -63,6 +64,11 @@ class GamesRepository(
             sort = if (search != null) "relevance" else filter.sort,
             genreId = if (search == null) filter.genreId else null,
             platformId = if (search == null) filter.platformId else null,
+            platformIds = if (search == null) {
+                filter.platformIds.takeIf { it.isNotEmpty() }?.joinToString(",")
+            } else {
+                null
+            },
             developerId = if (search == null) filter.developerId else null,
             publisherId = if (search == null) filter.publisherId else null,
             ageRatingCategoryId = if (search == null) {
@@ -140,6 +146,13 @@ private fun IgdbGameDto.toGameDetailsUiModel(
             GameTagUiModel(genre.id, genre.name, genre.slug)
         },
         platforms = platforms.map { platform -> platform.name },
+        platformDetails = platforms.map { platform ->
+            GamePlatformUiModel(
+                id = platform.id,
+                name = platform.name,
+                abbreviation = platform.abbreviation
+            )
+        },
         developers = developers,
         publishers = publishers,
         screenshots = screenshots.ifEmpty { listOfNotNull(coverUrl.takeIf(String::isNotEmpty)) },

@@ -22,3 +22,10 @@ data class StoredAgeRating(
     val name: String,
     val slug: String
 )
+
+@Serializable
+data class StoredPlatform(
+    val id: Int,
+    val name: String,
+    val abbreviation: String? = null
+)

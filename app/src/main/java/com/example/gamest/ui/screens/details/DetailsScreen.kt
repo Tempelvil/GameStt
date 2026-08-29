@@ -51,6 +51,7 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.getValue
@@ -94,10 +95,14 @@ import androidx.compose.ui.window.DialogProperties
 import com.example.gamest.data.local.GameStatus
 import com.example.gamest.data.local.CompletionStyle
 import com.example.gamest.model.GameTimeToBeatUiModel
+import com.example.gamest.model.GamePlatformFamilyUiModel
+import com.example.gamest.model.GamePlatformUiModel
+import kotlin.math.roundToInt
 
 @Composable
 fun DetailsScreen(
     uiState: GameDetailsUiState,
+    initialSteamPlaytimeMinutes: Long? = null,
     onBackClick: () -> Unit,
     onRetryClick: () -> Unit,
     onSaveConfirm: (
@@ -110,6 +115,7 @@ fun DetailsScreen(
     modifier: Modifier = Modifier,
     onDeveloperClick: (GameCompanyUiModel) -> Unit,
     onGenreClick: (GameTagUiModel) -> Unit,
+    onPlatformClick: (GamePlatformFamilyUiModel) -> Unit,
     onAgeRatingClick: (GameAgeRatingUiModel) -> Unit,
     onPublisherClick: (GameCompanyUiModel) -> Unit,
 ) {
@@ -187,8 +193,9 @@ fun DetailsScreen(
                 }
 
                 item {
-                    GameDetailsHeader(
-                        game = game,
+                        GameDetailsHeader(
+                            game = game,
+                            onPlatformClick = onPlatformClick,
                         onSaveClick = {
                             if (game.isSaved) {
                                 showDeleteDialog = true
@@ -230,6 +237,8 @@ fun DetailsScreen(
             if (showSaveDialog) {
                 SaveGameDialog(
                     timeToBeat = game.timeToBeat,
+                    initialSteamHoursPlayed = initialSteamPlaytimeMinutes
+                        ?.toRoundedHours(),
                     onDismissRequest = {
                         showSaveDialog = false
                     },
@@ -264,6 +273,7 @@ fun DetailsScreen(
 @Composable
 private fun SaveGameDialog(
     timeToBeat: GameTimeToBeatUiModel,
+    initialSteamHoursPlayed: Int? = null,
     onDismissRequest: () -> Unit,
     onConfirm: (
         status: GameStatus,
@@ -284,8 +294,8 @@ private fun SaveGameDialog(
         mutableStateOf<CompletionStyle?>(null)
     }
 
-    var hoursText by rememberSaveable {
-        mutableStateOf("")
+    var hoursText by rememberSaveable(initialSteamHoursPlayed) {
+        mutableStateOf(initialSteamHoursPlayed?.toString().orEmpty())
     }
 
     val userRating = ratingText.toIntOrNull()
@@ -438,8 +448,10 @@ private fun SaveGameDialog(
                         selected = completionStyle == style,
                         onClick = {
                             completionStyle = style
-                            estimate?.toHours()?.let { hours ->
-                                hoursText = hours.toString()
+                            if (initialSteamHoursPlayed == null) {
+                                estimate?.toHours()?.let { hours ->
+                                    hoursText = hours.toString()
+                                }
                             }
                         },
                         label = {
@@ -467,13 +479,18 @@ private fun SaveGameDialog(
                 },
                 supportingText = {
                     Text(
-                        text = completionStyle
-                            ?.let(timeToBeat::secondsFor)
-                            ?.let { "IGDB estimate: ${it.toHours()} h" }
-                            ?: if (timeToBeat.normallySeconds != null) {
-                            "IGDB normal estimate: ${timeToBeat.normallySeconds.toHours()} h"
+                        text = if (initialSteamHoursPlayed != null) {
+                            "Steam playtime: $initialSteamHoursPlayed h"
                         } else {
-                            "Enter 0 if you haven't played yet"
+                            completionStyle
+                                ?.let(timeToBeat::secondsFor)
+                                ?.let { "IGDB estimate: ${it.toHours()} h" }
+                                ?: if (timeToBeat.normallySeconds != null) {
+                                    "IGDB normal estimate: " +
+                                        "${timeToBeat.normallySeconds.toHours()} h"
+                                } else {
+                                    "Enter 0 if you haven't played yet"
+                                }
                         },
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -532,6 +549,9 @@ private fun GameTimeToBeatUiModel.secondsFor(style: CompletionStyle): Int? = whe
 }
 
 private fun Int.toHours(): Int = ((this + 1_800) / 3_600).coerceAtLeast(0)
+
+private fun Long.toRoundedHours(): Int =
+    (this.coerceAtLeast(0) / 60.0).roundToInt()
 
 private fun GameStatus.toDisplayName(): String {
     return when (this) {
@@ -817,6 +837,7 @@ fun GameScreenshotPager(
 fun GameDetailsHeader(
     game: GameDetailsUiModel,
     onSaveClick:()->Unit,
+    onPlatformClick: (GamePlatformFamilyUiModel) -> Unit,
     modifier: Modifier= Modifier
 ){
     Column(
@@ -832,7 +853,9 @@ fun GameDetailsHeader(
         GameMetadataRow(game = game)
 
         PlatformIconsRow(
-            platforms = game.platforms
+            platforms = game.platformDetails,
+            legacyPlatformNames = game.platforms,
+            onPlatformClick = onPlatformClick
         )
         Button(
             onClick = onSaveClick,
@@ -924,78 +947,30 @@ fun GameMetadataRow(
             )
 
             Text(
-                text = "IGDB users",
+                text = "IGDB",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
 }
-private data class PlatformIcon(
-    @DrawableRes val iconRes: Int,
-    val contentDescription: String
-)
 @Composable
 private fun PlatformIconsRow(
-    platforms: List<String>,
+    platforms: List<GamePlatformUiModel>,
+    legacyPlatformNames: List<String>,
+    onPlatformClick: (GamePlatformFamilyUiModel) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val platformIcons = platforms
-        .mapNotNull { platform ->
-            when {
-                platform.contains("PC", ignoreCase = true) -> {
-                    PlatformIcon(
-                        iconRes = R.drawable.logo_windows_svgrepo_com,
-                        contentDescription = "PC"
-                    )
-                }
-
-                platform.contains("Xbox", ignoreCase = true) -> {
-                    PlatformIcon(
-                        iconRes = R.drawable.xbox_svgrepo_com,
-                        contentDescription = "Xbox"
-                    )
-                }
-
-                platform.contains("PlayStation", ignoreCase = true) -> {
-                    PlatformIcon(
-                        iconRes = R.drawable.play_station_logo_svgrepo_com,
-                        contentDescription = "PlayStation"
-                    )
-                }
-
-                platform.contains("Nintendo", ignoreCase = true) -> {
-                    PlatformIcon(
-                        iconRes = R.drawable.nintendo_switch_svgrepo_com,
-                        contentDescription = "Nintendo Switch"
-                    )
-                }
-
-                platform.contains("Android", ignoreCase = true) -> {
-                    PlatformIcon(
-                        iconRes = R.drawable.android_svgrepo_com,
-                        contentDescription = "Android"
-                    )
-                }
-                platform.contains("Ios", ignoreCase = true) -> {
-                    PlatformIcon(
-                        iconRes = R.drawable.ios_svgrepo_com,
-                        contentDescription = "Ios"
-                    )
-                }
-                platform.contains("Linux", ignoreCase = true) -> {
-                    PlatformIcon(
-                        iconRes = R.drawable.linux_svgrepo_com,
-                        contentDescription = "Linux"
-                    )
-                }
-
-                else -> null
-            }
+    val availablePlatforms = platforms.ifEmpty {
+        legacyPlatformNames.map { name ->
+            GamePlatformUiModel(id = -1, name = name)
         }
-        .distinctBy { it.iconRes }
+    }
+    val visibleFamilies = availablePlatforms
+        .mapNotNull(::platformFamilyFor)
+        .distinctBy(PlatformFamily::name)
 
-    if (platformIcons.isEmpty()) return
+    if (visibleFamilies.isEmpty()) return
 
     Row(
         modifier = modifier
@@ -1011,16 +986,75 @@ private fun PlatformIconsRow(
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        platformIcons.forEach { platformIcon ->
-            Icon(
-                painter = painterResource(
-                    id = platformIcon.iconRes
-                ),
-                contentDescription = platformIcon.contentDescription,
-                tint = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(28.dp)
-            )
+        visibleFamilies.forEach { family ->
+            OutlinedIconButton(
+                onClick = {
+                    onPlatformClick(
+                        GamePlatformFamilyUiModel(
+                            name = family.name,
+                            platformIds = family.platformIds
+                        )
+                    )
+                },
+                modifier = Modifier.size(42.dp),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Icon(
+                    painter = painterResource(family.iconRes),
+                    contentDescription = family.name,
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(26.dp)
+                )
+            }
         }
+    }
+}
+
+private data class PlatformFamily(
+    val name: String,
+    val platformIds: List<Int>,
+    @DrawableRes val iconRes: Int
+)
+
+private val pcFamily = PlatformFamily(
+    name = "PC",
+    platformIds = listOf(3, 6, 14),
+    iconRes = R.drawable.logo_windows_svgrepo_com
+)
+private val xboxFamily = PlatformFamily(
+    name = "Xbox",
+    platformIds = listOf(11, 12, 49, 169),
+    iconRes = R.drawable.xbox_svgrepo_com
+)
+private val playStationFamily = PlatformFamily(
+    name = "PlayStation",
+    platformIds = listOf(7, 8, 9, 38, 46, 48, 167),
+    iconRes = R.drawable.play_station_logo_svgrepo_com
+)
+private val nintendoFamily = PlatformFamily(
+    name = "Nintendo",
+    platformIds = listOf(4, 5, 18, 19, 20, 21, 24, 33, 37, 41, 130),
+    iconRes = R.drawable.nintendo_switch_svgrepo_com
+)
+
+private fun platformFamilyFor(platform: GamePlatformUiModel): PlatformFamily? {
+    val name = platform.name
+    return when {
+        platform.id in pcFamily.platformIds ||
+            name.contains("PC", ignoreCase = true) ||
+            name.contains("Windows", ignoreCase = true) ||
+            name.contains("Linux", ignoreCase = true) ||
+            name.contains("Mac", ignoreCase = true) -> pcFamily
+        platform.id in xboxFamily.platformIds ||
+            name.contains("Xbox", ignoreCase = true) -> xboxFamily
+        platform.id in playStationFamily.platformIds ||
+            name.contains("PlayStation", ignoreCase = true) -> playStationFamily
+        platform.id in nintendoFamily.platformIds ||
+            name.contains("Nintendo", ignoreCase = true) ||
+            name.contains("Switch", ignoreCase = true) ||
+            name.contains("Wii", ignoreCase = true) ||
+            name.contains("Game Boy", ignoreCase = true) -> nintendoFamily
+        else -> null
     }
 }
 @Composable
@@ -1453,6 +1487,7 @@ private fun DetailsScreenDarkPreview() {
             modifier = Modifier,
             onDeveloperClick = {},
             onGenreClick = {},
+            onPlatformClick = {},
             onAgeRatingClick = {},
             onPublisherClick = {},
             onSaveConfirm = { _, _, _, _ -> },
@@ -1480,6 +1515,7 @@ private fun DetailsScreenLightPreview() {
             onRetryClick = {},
             onDeveloperClick = {},
             onGenreClick = {},
+            onPlatformClick = {},
             modifier = Modifier,
             onAgeRatingClick = {},
             onPublisherClick = {},
@@ -1514,6 +1550,12 @@ private val previewGameDetails = GameDetailsUiModel(
         "PlayStation 5",
         "Xbox Series S/X",
         "Nintendo Switch"
+    ),
+    platformDetails = listOf(
+        GamePlatformUiModel(6, "PC (Microsoft Windows)", "PC"),
+        GamePlatformUiModel(167, "PlayStation 5", "PS5"),
+        GamePlatformUiModel(169, "Xbox Series X|S", "Series X|S"),
+        GamePlatformUiModel(130, "Nintendo Switch", "Switch")
     ),
     developers = listOf(
         GameCompanyUiModel(
@@ -1566,6 +1608,7 @@ private fun DetailsErrorPreview() {
             modifier = Modifier,
             onDeveloperClick = {},
             onGenreClick = {},
+            onPlatformClick = {},
             onAgeRatingClick = {},
             onPublisherClick = { },
             onSaveConfirm = { _, _, _, _ -> },

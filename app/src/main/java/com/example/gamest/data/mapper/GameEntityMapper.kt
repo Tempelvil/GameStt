@@ -6,10 +6,12 @@ import com.example.gamest.data.local.GameStatus
 import com.example.gamest.data.local.StoredAgeRating
 import com.example.gamest.data.local.StoredCompany
 import com.example.gamest.data.local.StoredTag
+import com.example.gamest.data.local.StoredPlatform
 import com.example.gamest.model.GameAgeRatingUiModel
 import com.example.gamest.model.GameCompanyUiModel
 import com.example.gamest.model.GameDetailsUiModel
 import com.example.gamest.model.GameTagUiModel
+import com.example.gamest.model.GamePlatformUiModel
 
 fun GameDetailsUiModel.toGameEntity(
     status: GameStatus,
@@ -40,6 +42,13 @@ fun GameDetailsUiModel.toGameEntity(
         },
 
         platforms = platforms,
+        platformDetails = platformDetails.map { platform ->
+            StoredPlatform(
+                id = platform.id,
+                name = platform.name,
+                abbreviation = platform.abbreviation
+            )
+        },
 
         developers = developers.map { developer ->
             StoredCompany(
@@ -94,6 +103,13 @@ fun GameEntity.toGameDetailsUiModel(): GameDetailsUiModel {
         },
 
         platforms = platforms,
+        platformDetails = platformDetails.map { platform ->
+            GamePlatformUiModel(
+                id = platform.id,
+                name = platform.name,
+                abbreviation = platform.abbreviation
+            )
+        },
 
         developers = developers.map { developer ->
             GameCompanyUiModel(

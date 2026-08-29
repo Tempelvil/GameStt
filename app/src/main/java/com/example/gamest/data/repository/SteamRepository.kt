@@ -8,6 +8,8 @@ import com.example.gamest.data.local.SteamPlaytimeDeltaEntity
 import com.example.gamest.data.local.SteamProfileEntity
 import com.example.gamest.data.local.SteamProfileStatus
 import com.example.gamest.data.local.SteamSyncEntity
+import com.example.gamest.data.local.SteamIgdbMappingEntity
+import com.example.gamest.data.local.SteamIgdbMatchStatus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -36,7 +38,15 @@ interface SteamRepository {
     suspend fun updateProfileStatus(steamId: String, status: String)
 
     suspend fun deleteProfileData(steamId: String)
+
+    suspend fun resolveIgdbGame(appId: Int): SteamIgdbMatch
 }
+
+data class SteamIgdbMatch(
+    val steamAppId: Int,
+    val igdbGameId: Int?,
+    val status: String
+)
 
 data class SteamProfile(
     val steamId: String,
@@ -88,6 +98,46 @@ class DefaultSteamRepository(
     private val apiService: SteamApiService,
     private val steamGameDao: SteamGameDao
 ) : SteamRepository {
+
+    override suspend fun resolveIgdbGame(appId: Int): SteamIgdbMatch {
+        val cached = steamGameDao.getIgdbMapping(appId)
+        val now = System.currentTimeMillis()
+        val cachedMaxAge = if (cached?.status == SteamIgdbMatchStatus.EXACT) {
+            EXACT_MATCH_REFRESH_MILLIS
+        } else {
+            UNMATCHED_RETRY_MILLIS
+        }
+        if (cached != null && now - cached.checkedAt < cachedMaxAge) {
+            return cached.toDomain()
+        }
+
+        val response = apiService.getGameMatch(appId)
+        val normalizedStatus = response.status.uppercase()
+        check(response.steamAppId == appId) {
+            "GameShelf returned a match for a different Steam game."
+        }
+        check(
+            normalizedStatus == SteamIgdbMatchStatus.EXACT ||
+                normalizedStatus == SteamIgdbMatchStatus.UNMATCHED ||
+                normalizedStatus == SteamIgdbMatchStatus.AMBIGUOUS
+        ) {
+            "GameShelf returned an unknown Steam match status."
+        }
+        check(
+            normalizedStatus != SteamIgdbMatchStatus.EXACT ||
+                response.igdbGameId != null
+        ) {
+            "GameShelf returned an incomplete Steam game match."
+        }
+        val mapping = SteamIgdbMappingEntity(
+            steamAppId = appId,
+            igdbGameId = response.igdbGameId,
+            status = normalizedStatus,
+            checkedAt = now
+        )
+        steamGameDao.insertIgdbMapping(mapping)
+        return mapping.toDomain()
+    }
 
     override fun observeProfiles(): Flow<List<SteamProfile>> {
         return steamGameDao.observeProfiles()
@@ -293,6 +343,9 @@ class DefaultSteamRepository(
     private companion object {
         const val MAX_PROFILES = 4
         const val TRACKING_GAP_MILLIS = 48L * 60L * 60L * 1_000L
+        const val UNMATCHED_RETRY_MILLIS = 30L * 24L * 60L * 60L * 1_000L
+        const val EXACT_MATCH_REFRESH_MILLIS =
+            180L * 24L * 60L * 60L * 1_000L
     }
 
 }
@@ -376,4 +429,10 @@ private fun SteamPlaytimeDeltaEntity.toDomain() = SteamPlaytimeDelta(
     deltaMinutes = deltaMinutes,
     totalMinutesAfterSync = totalMinutesAfterSync,
     isUntrackedPeriod = isUntrackedPeriod
+)
+
+private fun SteamIgdbMappingEntity.toDomain() = SteamIgdbMatch(
+    steamAppId = steamAppId,
+    igdbGameId = igdbGameId,
+    status = status
 )

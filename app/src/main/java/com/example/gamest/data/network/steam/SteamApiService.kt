@@ -5,6 +5,11 @@ import retrofit2.http.Query
 
 interface SteamApiService {
 
+    @GET("steam/game-match")
+    suspend fun getGameMatch(
+        @Query("appId") appId: Int
+    ): SteamGameMatchDto
+
     @GET("steam/player-summaries")
     suspend fun getPlayerSummaries(
         @Query("steamIds") steamIds: String

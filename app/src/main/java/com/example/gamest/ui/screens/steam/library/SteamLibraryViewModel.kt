@@ -13,6 +13,7 @@ import com.example.gamest.data.repository.SteamGame
 import com.example.gamest.data.repository.SteamRepository
 import com.example.gamest.data.repository.SteamProfile
 import com.example.gamest.data.local.SteamProfileStatus
+import com.example.gamest.data.local.SteamIgdbMatchStatus
 import java.io.IOException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -86,6 +87,45 @@ class SteamLibraryViewModel(
 
     fun selectSort(sort: SteamLibrarySort) {
         selectedSort.value = sort
+    }
+
+    fun openGame(appId: Int, onResolved: (Int) -> Unit) {
+        if (
+            syncState.value.openingGameAppId != null ||
+            syncState.value.isSyncing
+        ) return
+        viewModelScope.launch {
+            syncState.value = syncState.value.copy(
+                openingGameAppId = appId,
+                errorMessage = null
+            )
+            try {
+                val match = steamRepository.resolveIgdbGame(appId)
+                val igdbGameId = match.igdbGameId
+                syncState.value = syncState.value.copy(openingGameAppId = null)
+                when {
+                    match.status == SteamIgdbMatchStatus.EXACT &&
+                        igdbGameId != null -> onResolved(igdbGameId)
+
+                    match.status == SteamIgdbMatchStatus.AMBIGUOUS ->
+                        showError(
+                            "IGDB has several possible pages for this Steam game."
+                        )
+
+                    else -> showError(
+                        "IGDB does not have a page linked to this Steam game yet."
+                    )
+                }
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (_: IOException) {
+                showError("Unable to load this game from IGDB.")
+            } catch (exception: HttpException) {
+                showError("Game lookup failed with HTTP ${exception.code()}.")
+            } catch (_: Exception) {
+                showError("Unable to open this Steam game.")
+            }
+        }
     }
 
     fun sync() {
@@ -239,6 +279,7 @@ private fun createUiState(
         selectedSort = sort,
         lastSyncAt = connection.lastSyncAt,
         isSyncing = sync.isSyncing,
+        openingGameAppId = sync.openingGameAppId,
         errorMessage = sync.errorMessage,
         profiles = profiles.map(SteamProfile::toUiModel),
         activeSteamId = connection.steamId.takeIf(String::isNotBlank),
@@ -263,6 +304,7 @@ private fun SteamGame.toUiModel(): SteamLibraryGameUiModel {
 
 private data class SyncState(
     val isSyncing: Boolean = false,
+    val openingGameAppId: Int? = null,
     val errorMessage: String? = null
 )
 

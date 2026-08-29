@@ -22,6 +22,7 @@ data class GameDetailsUiModel(
     val criticRating: Int?,
     val genres: List<GameTagUiModel>,
     val platforms: List<String>,
+    val platformDetails: List<GamePlatformUiModel> = emptyList(),
     val developers: List<GameCompanyUiModel>,
     val publishers: List<GameCompanyUiModel>,
     val screenshots: List<String> = emptyList(),
@@ -58,6 +59,17 @@ data class GameCompanyUiModel(
     val id: Int,
     val name: String,
     val slug: String
+)
+
+data class GamePlatformUiModel(
+    val id: Int,
+    val name: String,
+    val abbreviation: String? = null
+)
+
+data class GamePlatformFamilyUiModel(
+    val name: String,
+    val platformIds: List<Int>
 )
 
 enum class GameStatus {

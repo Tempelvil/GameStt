@@ -12,6 +12,7 @@ interface WorkerGamesApiService {
         @Query("sort") sort: String? = null,
         @Query("genreId") genreId: Int? = null,
         @Query("platformId") platformId: Int? = null,
+        @Query("platformIds") platformIds: String? = null,
         @Query("developerId") developerId: Int? = null,
         @Query("publisherId") publisherId: Int? = null,
         @Query("ageRatingCategoryId") ageRatingCategoryId: Int? = null,

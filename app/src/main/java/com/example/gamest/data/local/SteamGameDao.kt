@@ -38,6 +38,14 @@ interface SteamGameDao {
     suspend fun getGames(steamId: String): List<SteamGameEntity>
 
     @Query(
+        "SELECT * FROM steam_igdb_mappings WHERE steamAppId = :appId LIMIT 1"
+    )
+    suspend fun getIgdbMapping(appId: Int): SteamIgdbMappingEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertIgdbMapping(mapping: SteamIgdbMappingEntity)
+
+    @Query(
         """
         SELECT * FROM steam_syncs
         WHERE steamId = :steamId

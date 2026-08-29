@@ -71,6 +71,7 @@ fun SteamLibraryScreen(
     onFilterClick: (SteamLibraryFilter) -> Unit,
     onSortClick: (SteamLibrarySort) -> Unit,
     onSyncClick: () -> Unit,
+    onGameClick: (Int) -> Unit,
     onAddProfileClick: () -> Unit,
     onActivateProfile: (SteamProfileUiModel) -> Unit,
     onPauseProfile: () -> Unit,
@@ -160,7 +161,12 @@ fun SteamLibraryScreen(
                         items = uiState.games,
                         key = SteamLibraryGameUiModel::appId
                     ) { game ->
-                        SteamLibraryGameCard(game)
+                        SteamLibraryGameCard(
+                            game = game,
+                            isOpening = uiState.openingGameAppId == game.appId,
+                            enabled = uiState.openingGameAppId == null,
+                            onClick = { onGameClick(game.appId) }
+                        )
                     }
                 }
             }
@@ -534,8 +540,15 @@ private fun SteamLibrarySearchField(
 }
 
 @Composable
-private fun SteamLibraryGameCard(game: SteamLibraryGameUiModel) {
+private fun SteamLibraryGameCard(
+    game: SteamLibraryGameUiModel,
+    isOpening: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
     Surface(
+        onClick = onClick,
+        enabled = enabled,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
         color = MaterialTheme.colorScheme.surface,
@@ -586,6 +599,14 @@ private fun SteamLibraryGameCard(game: SteamLibraryGameUiModel) {
                         )
                     }
             }
+
+            if (isOpening) {
+                Spacer(modifier = Modifier.width(8.dp))
+                CircularProgressIndicator(
+                    modifier = Modifier.size(22.dp),
+                    strokeWidth = 2.dp
+                )
+            }
         }
     }
 }
@@ -631,6 +652,7 @@ private fun SteamLibraryScreenPreview() {
             onFilterClick = {},
             onSortClick = {},
             onSyncClick = {},
+            onGameClick = {},
             onAddProfileClick = {},
             onActivateProfile = {},
             onPauseProfile = {},

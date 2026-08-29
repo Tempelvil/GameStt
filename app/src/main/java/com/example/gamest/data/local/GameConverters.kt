@@ -61,6 +61,16 @@ class GameConverters {
     }
 
     @TypeConverter
+    fun fromStoredPlatforms(platforms: List<StoredPlatform>): String {
+        return json.encodeToString(platforms)
+    }
+
+    @TypeConverter
+    fun toStoredPlatforms(value: String): List<StoredPlatform> {
+        return json.decodeFromString(value)
+    }
+
+    @TypeConverter
     fun fromAgeRating(ageRating: StoredAgeRating?): String? {
         return ageRating?.let {
             json.encodeToString(it)

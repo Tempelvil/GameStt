@@ -1,6 +1,7 @@
 package com.example.gamest.data.local
 
 import androidx.room.Entity
+import androidx.room.ColumnInfo
 import androidx.room.PrimaryKey
 
 @Entity(tableName = "saved_games")
@@ -22,6 +23,8 @@ data class GameEntity(
 
     val genres: List<StoredTag>,
     val platforms: List<String>,
+    @ColumnInfo(defaultValue = "'[]'")
+    val platformDetails: List<StoredPlatform> = emptyList(),
     val developers: List<StoredCompany>,
     val publishers: List<StoredCompany>,
     val screenshots: List<String>,

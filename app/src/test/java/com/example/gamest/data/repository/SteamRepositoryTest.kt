@@ -11,12 +11,14 @@ import com.example.gamest.data.network.steam.SteamRecentlyPlayedPayloadDto
 import com.example.gamest.data.network.steam.SteamRecentlyPlayedResponseDto
 import com.example.gamest.data.network.steam.SteamVanityPayloadDto
 import com.example.gamest.data.network.steam.SteamVanityResponseDto
+import com.example.gamest.data.network.steam.SteamGameMatchDto
 import com.example.gamest.data.local.SteamGameDao
 import com.example.gamest.data.local.SteamGameEntity
 import com.example.gamest.data.local.SteamPlaytimeDeltaEntity
 import com.example.gamest.data.local.SteamProfileEntity
 import com.example.gamest.data.local.SteamProfileStatus
 import com.example.gamest.data.local.SteamSyncEntity
+import com.example.gamest.data.local.SteamIgdbMappingEntity
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
@@ -97,9 +99,33 @@ class SteamRepositoryTest {
         assertEquals(1, dao.syncs.size)
         assertEquals(SteamProfileStatus.UNLINKED, dao.profiles.single().status)
     }
+
+    @Test
+    fun resolveIgdbGame_cachesExactSteamMapping() = runBlocking {
+        val dao = FakeSteamGameDao()
+        val api = FakeSteamApiService()
+        val repository = DefaultSteamRepository(api, dao)
+
+        val first = repository.resolveIgdbGame(1245620)
+        val second = repository.resolveIgdbGame(1245620)
+
+        assertEquals(119133, first.igdbGameId)
+        assertEquals(first, second)
+        assertEquals(1, api.matchRequests)
+    }
 }
 
 private class FakeSteamApiService : SteamApiService {
+    var matchRequests = 0
+
+    override suspend fun getGameMatch(appId: Int): SteamGameMatchDto {
+        matchRequests += 1
+        return SteamGameMatchDto(
+            steamAppId = appId,
+            igdbGameId = 119133,
+            status = "exact"
+        )
+    }
 
     override suspend fun getPlayerSummaries(
         steamIds: String
@@ -168,6 +194,7 @@ private class FakeSteamGameDao : SteamGameDao {
     val games = mutableListOf<SteamGameEntity>()
     val syncs = mutableListOf<SteamSyncEntity>()
     val deltas = mutableListOf<SteamPlaytimeDeltaEntity>()
+    val mappings = mutableListOf<SteamIgdbMappingEntity>()
 
     override fun observeProfiles(): Flow<List<SteamProfileEntity>> =
         flowOf(profiles)
@@ -195,6 +222,14 @@ private class FakeSteamGameDao : SteamGameDao {
 
     override suspend fun getGames(steamId: String): List<SteamGameEntity> =
         games.filter { it.steamId == steamId }
+
+    override suspend fun getIgdbMapping(appId: Int): SteamIgdbMappingEntity? =
+        mappings.firstOrNull { it.steamAppId == appId }
+
+    override suspend fun insertIgdbMapping(mapping: SteamIgdbMappingEntity) {
+        mappings.removeAll { it.steamAppId == mapping.steamAppId }
+        mappings += mapping
+    }
 
     override fun observeSyncs(steamId: String): Flow<List<SteamSyncEntity>> =
         flowOf(syncs.filter { it.steamId == steamId })
